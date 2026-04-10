@@ -1,388 +1,398 @@
 <template>
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm">
-    <div class="container">
-      <router-link class="navbar-brand fw-bold" to="/">
-        <i class="fas fa-book me-2"></i>Thư Viện Online
+  <nav class="navbar">
+    <div class="nav-inner">
+
+      <!-- Logo -->
+      <router-link to="/" class="nav-logo">
+        <i class="fas fa-book-open nav-logo-icon"></i>
+        LibraTech
       </router-link>
 
-      <button class="navbar-toggler" type="button" @click="toggleNavbar">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div
-        class="collapse navbar-collapse"
-        :class="{ show: isNavbarOpen }"
-        id="navbarNav"
-      >
-        <ul class="navbar-nav me-auto">
-          <li class="nav-item">
-            <router-link class="nav-link" to="/">
-              <i class="fas fa-home me-1"></i>Trang chủ
-            </router-link>
-          </li>
-          <li class="nav-item">
-            <router-link class="nav-link" to="/sach">
-              <i class="fas fa-book-open me-1"></i>Danh sách sách
-            </router-link>
-          </li>
-          <li class="nav-item" v-if="userStore.user">
-            <router-link class="nav-link" to="/my-borrow">
-              <i class="fas fa-list me-1"></i>Sách đã mượn
-            </router-link>
-          </li>
-        </ul>
-
-        <ul class="navbar-nav">
-          <li class="nav-item dropdown">
-            <a
-              class="nav-link dropdown-toggle"
-              href="#"
-              role="button"
-              @click="toggleDropdown('registerDropdown')"
-            >
-              <i class="fas fa-user-plus me-1"></i>Đăng ký
-            </a>
-            <ul
-              class="dropdown-menu"
-              :class="{ show: activeDropdown === 'registerDropdown' }"
-            >
-              <li v-if="!userStore.user">
-                <router-link
-                  class="dropdown-item"
-                  to="/register"
-                  @click="closeAllDropdowns"
-                >
-                  <i class="fas fa-user-plus me-1"></i>Đăng ký tài khoản mới
-                </router-link>
-              </li>
-              <li v-else>
-                <div class="dropdown-item-text px-3 py-2">
-                  <small class="text-muted d-block">
-                    <i class="fas fa-info-circle me-1"></i>
-                    Đang đăng nhập tài khoản:
-                  </small>
-                  <strong class="d-block mt-1"
-                    >{{ userStore.user.HoLot }} {{ userStore.user.Ten }}</strong
-                  >
-                </div>
-                <div class="dropdown-divider"></div>
-                <button
-                  class="dropdown-item text-warning"
-                  @click="handleRegisterWithLogout"
-                >
-                  <i class="fas fa-sign-out-alt me-1"></i>Đăng xuất để đăng ký
-                  tài khoản mới
-                </button>
-              </li>
-            </ul>
-          </li>
-
-          <li class="nav-item dropdown">
-            <a
-              class="nav-link dropdown-toggle"
-              href="#"
-              role="button"
-              @click="toggleDropdown('loginDropdown')"
-            >
-              <i class="fas fa-sign-in-alt me-1"></i>Đăng nhập
-            </a>
-            <ul
-              class="dropdown-menu"
-              :class="{ show: activeDropdown === 'loginDropdown' }"
-            >
-              <li v-if="!userStore.user">
-                <router-link
-                  class="dropdown-item"
-                  to="/login"
-                  @click="closeAllDropdowns"
-                >
-                  <i class="fas fa-sign-in-alt me-1"></i>👤 Đăng nhập User
-                </router-link>
-              </li>
-              <li v-if="!userStore.user">
-                <router-link
-                  class="dropdown-item"
-                  to="/admin/login"
-                  @click="closeAllDropdowns"
-                >
-                  👨‍💼 Đăng nhập Admin
-                </router-link>
-              </li>
-
-              <li v-else>
-                <div class="dropdown-item-text px-3 py-2">
-                  <small class="text-muted d-block">
-                    <i class="fas fa-user-circle me-1"></i>
-                    Xin chào:
-                  </small>
-                  <strong class="d-block mt-1"
-                    >{{ userStore.user.HoLot }} {{ userStore.user.Ten }}</strong
-                  >
-                </div>
-                <div class="dropdown-divider"></div>
-                <button
-                  class="dropdown-item text-warning"
-                  @click="handleLoginWithLogout"
-                >
-                  <i class="fas fa-exchange-alt me-1"></i>Đăng xuất để đăng nhập
-                  tài khoản khác
-                </button>
-              </li>
-            </ul>
-          </li>
-
-          <li class="nav-item">
-            <router-link
-              class="nav-link"
-              to="/profile"
-              @click="closeAllDropdowns"
-            >
-              <i class="fas fa-user me-1"></i>Người dùng
-            </router-link>
-          </li>
-        </ul>
+      <!-- Main links -->
+      <div class="nav-links">
+        <router-link to="/" class="nav-link">
+          <i class="fas fa-home"></i> Trang Chủ
+        </router-link>
+        <router-link to="/sach" class="nav-link">
+          <i class="fas fa-book"></i> Danh Sách Sách
+        </router-link>
+        <router-link to="/the-loai" class="nav-link">Thể Loại</router-link>
+        <router-link to="/about" class="nav-link">Giới Thiệu</router-link>
+        <router-link to="/lien-he" class="nav-link">Liên Hệ</router-link>
+        <router-link v-if="userStore.user" to="/lich-su-muon" class="nav-link">
+          <i class="fas fa-list"></i> Sách Đã Mượn
+        </router-link>
       </div>
+
+      <!-- Actions -->
+      <div class="nav-actions">
+        <button class="icon-btn" title="Tìm kiếm">
+          <i class="fas fa-search"></i>
+        </button>
+
+        <div class="nav-dropdown">
+          <button class="btn-account">
+            <i class="fas fa-user-circle"></i>
+            <span>{{ userStore.isLoggedIn ? (userStore.user?.HoLot + ' ' + userStore.user?.Ten).trim() || 'Người Dùng' : 'Tài Khoản' }}</span>
+            <i class="fas fa-caret-down caret"></i>
+          </button>
+
+          <div class="dropdown-menu">
+            <!-- Chưa đăng nhập -->
+            <template v-if="!userStore.isLoggedIn">
+              <p class="dropdown-section-label">Chào mừng bạn</p>
+              <router-link to="/register" class="dropdown-item">
+                <i class="fas fa-user-plus"></i> Đăng Ký
+              </router-link>
+              <router-link to="/login" class="dropdown-item">
+                <i class="fas fa-sign-in-alt"></i> Đăng Nhập
+              </router-link>
+              <div class="dropdown-divider"></div>
+              <router-link to="/admin/login" class="dropdown-item">
+                <i class="fas fa-user-cog"></i> Đăng Nhập Admin
+              </router-link>
+            </template>
+
+            <!-- Đã đăng nhập -->
+            <template v-else>
+              <p class="dropdown-section-label">{{ userStore.user?.HoLot }} {{ userStore.user?.Ten }}</p>
+              <router-link to="/profile" class="dropdown-item">
+                <i class="fas fa-id-card"></i> Hồ Sơ
+              </router-link>
+              <router-link to="/lich-su-muon" class="dropdown-item">
+                <i class="fas fa-history"></i> Lịch Sử Mượn
+              </router-link>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item dropdown-item--danger" @click="showLogoutConfirm">
+                <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+              </button>
+            </template>
+          </div>
+        </div>
+      </div>
+
     </div>
   </nav>
 
-  <div v-if="showRegisterModal" class="modal-backdrop show"></div>
-  <div v-if="showRegisterModal" class="modal fade show d-block" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">
-            <i class="fas fa-user-plus me-2"></i>Đăng ký tài khoản mới
-          </h5>
-          <button
-            type="button"
-            class="btn-close"
-            @click="closeRegisterModal"
-          ></button>
-        </div>
-        <div class="modal-body">
-          <p>
-            <i class="fas fa-info-circle text-warning me-2"></i>
-            Bạn đang đăng nhập với tài khoản
-            <strong
-              >{{ userStore.user?.HoLot }} {{ userStore.user?.Ten }}</strong
-            >.
-          </p>
-          <p>Bạn cần đăng xuất để đăng ký tài khoản mới.</p>
-          <p class="mb-0"><strong>Bạn có muốn đăng xuất không?</strong></p>
-        </div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="closeRegisterModal"
-          >
-            <i class="fas fa-times me-1"></i>Không
+  <!-- LOGOUT MODAL -->
+  <Teleport to="body">
+    <div v-if="showLogoutModal" class="modal-overlay" @click.self="closeLogoutModal">
+      <div class="modal-box">
+        <div class="modal-head">
+          <div>
+            <p class="modal-tag">✦ XÁC NHẬN</p>
+            <h3 class="modal-title">Đăng Xuất</h3>
+          </div>
+          <button class="modal-close" @click="closeLogoutModal">
+            <i class="fas fa-times"></i>
           </button>
-          <button
-            type="button"
-            class="btn btn-primary"
-            @click="confirmRegisterLogout"
-          >
-            <i class="fas fa-check me-1"></i>Có, đăng xuất
+        </div>
+        <div class="modal-body-content">
+          <p class="modal-desc">
+            Bạn đang đăng nhập với tài khoản
+            <strong>{{ userStore.user?.HoLot }} {{ userStore.user?.Ten }}</strong>.
+          </p>
+          <p class="modal-desc" style="margin-bottom:0">Bạn có chắc chắn muốn đăng xuất không?</p>
+        </div>
+        <div class="modal-footer-btns">
+          <button class="btn-ghost-sm" @click="closeLogoutModal">
+            <i class="fas fa-times"></i> Huỷ
+          </button>
+          <button class="btn-confirm" @click="confirmLogout">
+            <i class="fas fa-check"></i> Đăng Xuất
           </button>
         </div>
       </div>
     </div>
-  </div>
-
-  <div v-if="showLoginModal" class="modal-backdrop show"></div>
-  <div v-if="showLoginModal" class="modal fade show d-block" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">
-            <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập tài khoản khác
-          </h5>
-          <button
-            type="button"
-            class="btn-close"
-            @click="closeLoginModal"
-          ></button>
-        </div>
-        <div class="modal-body">
-          <p>
-            <i class="fas fa-info-circle text-warning me-2"></i>
-            Bạn đang đăng nhập với tài khoản
-            <strong
-              >{{ userStore.user?.HoLot }} {{ userStore.user?.Ten }}</strong
-            >.
-          </p>
-          <p>Bạn cần đăng xuất để đăng nhập tài khoản khác.</p>
-          <p class="mb-0"><strong>Bạn có muốn đăng xuất không?</strong></p>
-        </div>
-        <div class="modal-footer">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="closeLoginModal"
-          >
-            <i class="fas fa-times me-1"></i>Không
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary"
-            @click="confirmLoginLogout"
-          >
-            <i class="fas fa-check me-1"></i>Có, đăng xuất
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { useUserStore } from "../stores/userStore";
-import { useRouter } from "vue-router";
+import { ref } from 'vue'
+import { useUserStore } from '../stores/userStore'
+import { useRouter } from 'vue-router'
 
-const userStore = useUserStore();
-const router = useRouter();
+const userStore = useUserStore()
+const router = useRouter()
 
-const isNavbarOpen = ref(false);
-const activeDropdown = ref("");
-const showRegisterModal = ref(false);
-const showLoginModal = ref(false);
+const showLogoutModal = ref(false)
 
-onMounted(() => {
-  console.log("User data in navbar:", userStore.user);
-});
+const showLogoutConfirm = () => { showLogoutModal.value = true }
+const closeLogoutModal = () => { showLogoutModal.value = false }
 
-const toggleNavbar = () => {
-  isNavbarOpen.value = !isNavbarOpen.value;
-  activeDropdown.value = "";
-};
-
-const toggleDropdown = (dropdownName) => {
-  if (activeDropdown.value === dropdownName) {
-    activeDropdown.value = "";
-  } else {
-    activeDropdown.value = dropdownName;
-  }
-};
-
-const closeAllDropdowns = () => {
-  activeDropdown.value = "";
-  isNavbarOpen.value = false;
-};
-
-const handleRegisterWithLogout = () => {
-  console.log("Handle register with logout clicked");
-  closeAllDropdowns();
-  showRegisterModal.value = true;
-};
-
-const handleLoginWithLogout = () => {
-  console.log("Handle login with logout clicked");
-  closeAllDropdowns();
-  showLoginModal.value = true;
-};
-
-const closeRegisterModal = () => {
-  showRegisterModal.value = false;
-};
-
-const closeLoginModal = () => {
-  showLoginModal.value = false;
-};
-
-const confirmRegisterLogout = () => {
-  console.log("Confirm register logout");
-  userStore.logout();
-  closeRegisterModal();
-  router.push("/register");
-};
-
-const confirmLoginLogout = () => {
-  console.log("Confirm login logout");
-  userStore.logout();
-  closeLoginModal();
-  router.push("/login");
-};
+const confirmLogout = () => {
+  userStore.logout()
+  closeLogoutModal()
+  router.push('/')
+}
 </script>
 
 <style scoped>
-.navbar-brand {
-  font-size: 1.5rem;
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap');
+
+/* ── NAVBAR ── */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(250, 248, 245, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e8e0d8;
+}
+.nav-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 2rem;
+  gap: 1.5rem;
 }
 
-.dropdown-item {
-  opacity: 1 !important;
+/* Logo */
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #2c2420;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
+.nav-logo-icon { color: #7c3d2d; font-size: 1.1rem; }
 
-.dropdown-item.text-primary {
-  color: #0d6efd !important;
-}
-
-.dropdown-item.text-warning {
-  color: #ffc107 !important;
+/* Nav links */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  justify-content: center;
 }
 .nav-link {
+  font-size: 0.82rem;
+  font-weight: 400;
+  color: #6b5c55;
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.nav-link i { font-size: 0.75rem; opacity: 0.7; }
+.nav-link:hover,
+.nav-link.router-link-active { color: #7c3d2d; background: rgba(124, 61, 45, 0.06); }
+
+/* Actions */
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.icon-btn {
+  background: none;
+  border: none;
+  color: #6b5c55;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.45rem 0.5rem;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+.icon-btn:hover { color: #2c2420; background: rgba(44, 36, 32, 0.06); }
+
+/* Dropdown */
+.nav-dropdown { position: relative; }
+.btn-account {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #7c3d2d;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.45rem 1rem;
+  font-size: 0.83rem;
   font-weight: 500;
-  transition: color 0.3s ease;
+  font-family: 'DM Sans', sans-serif;
   cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: background 0.2s;
+  white-space: nowrap;
+  max-width: 200px;
 }
-
-.nav-link:hover {
-  color: #fff !important;
+.btn-account span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.router-link-active.router-link-exact-active {
-  color: #fff !important;
-  font-weight: 600;
-}
-
-.dropdown-item-text small {
-  font-size: 0.875rem;
-}
-
-@media (max-width: 768px) {
-  .navbar-nav {
-    text-align: center;
-  }
-
-  .dropdown-menu {
-    border: none;
-    box-shadow: none;
-    text-align: center;
-    background-color: rgba(255, 255, 255, 0.95);
-  }
-}
-
-.dropdown-item {
-  cursor: pointer;
-}
-
-.dropdown-item:hover {
-  background-color: #f8f9fa;
-}
-
-.modal-backdrop {
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.modal-header {
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
-}
-
-.modal-title {
-  color: var(--primary-color);
-  font-weight: 600;
-}
+.btn-account:hover { background: #5c2d1f; }
+.btn-account .caret { font-size: 0.7rem; opacity: 0.8; flex-shrink: 0; }
 
 .dropdown-menu {
-  transition: all 0.3s ease;
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e8e0d8;
+  border-radius: 8px;
+  min-width: 185px;
+  box-shadow: 0 8px 24px rgba(44, 36, 32, 0.12);
+  padding: 0.5rem;
+  z-index: 200;
 }
+.nav-dropdown:hover .dropdown-menu,
+.nav-dropdown:focus-within .dropdown-menu { display: block; }
 
-.navbar-collapse {
-  transition: all 0.3s ease;
+.dropdown-section-label {
+  font-size: 0.75rem;
+  color: #b0a09a;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.75rem 0.25rem;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  font-size: 0.87rem;
+  color: #4a3530;
+  text-decoration: none;
+  border-radius: 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.15s, color 0.15s;
+  text-align: left;
+}
+.dropdown-item i { font-size: 0.8rem; color: #9a8a84; width: 14px; }
+.dropdown-item:hover { background: #f5f1ec; color: #2c2420; }
+.dropdown-item--danger { color: #b94a2c; }
+.dropdown-item--danger i { color: #b94a2c; }
+.dropdown-item--danger:hover { background: #fff1ee; color: #8c2d12; }
+.dropdown-divider { height: 1px; background: #ede8e3; margin: 0.4rem 0.5rem; }
 
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26, 18, 14, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1.5rem;
+}
+.modal-box {
+  background: #faf8f5;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid #e8e0d8;
+}
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1.5rem 1.75rem 1.1rem;
+  border-bottom: 1px solid #e8e0d8;
+}
+.modal-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  color: #7c3d2d;
+  font-weight: 500;
+  margin: 0 0 0.25rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.modal-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1a120e;
+  margin: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: #9a8a84;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  transition: color 0.2s;
+}
+.modal-close:hover { color: #2c2420; }
+.modal-body-content { padding: 1.5rem 1.75rem; }
+.modal-desc {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  color: #4a3530;
+  line-height: 1.65;
+  margin: 0 0 0.75rem;
+}
+.modal-footer-btns {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1rem 1.75rem 1.5rem;
+  border-top: 1px solid #e8e0d8;
+}
+.btn-ghost-sm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: none;
+  border: 1.5px solid #c9b5af;
+  color: #4a3530;
+  border-radius: 4px;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.85rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-ghost-sm:hover { border-color: #7c3d2d; color: #7c3d2d; }
+.btn-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #7c3d2d;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.55rem 1.25rem;
+  font-size: 0.85rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.btn-confirm:hover { background: #5c2d1f; }
 
+/* ── RESPONSIVE ── */
+@media (max-width: 1024px) {
+  .nav-links { gap: 0; }
+  .nav-link { font-size: 0.78rem; padding: 0.4rem 0.55rem; }
+}
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-inner { padding: 0.85rem 1rem; }
+}
 </style>

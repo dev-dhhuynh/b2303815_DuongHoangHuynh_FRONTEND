@@ -1,211 +1,207 @@
 <template>
-  <div class="admin-pending-page py-4">
-    <div class="container">
-      <div class="row mb-4">
-        <div class="col-12">
-          <h1 class="h2 fw-bold text-dark">
-            <i class="fas fa-clock me-2"></i>Yêu cầu đang chờ duyệt
-          </h1>
-          <p class="text-muted">Duyệt các yêu cầu mượn sách mới từ độc giả</p>
-        </div>
-      </div>
+  <div class="pending-page">
+    <div class="container py-5">
 
-      <div v-if="loading" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <p class="mt-2 text-muted">Đang tải yêu cầu...</p>
-      </div>
-
-      <div v-else-if="pendingRequests.length === 0" class="text-center py-5">
-        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
-        <h4 class="text-muted">Không có yêu cầu nào đang chờ</h4>
-        <p class="text-muted">Tất cả yêu cầu mượn sách đã được xử lý.</p>
-      </div>
-
-      <div v-else class="row">
-        <div class="col-12">
-          <div class="card shadow border-0">
-            <div class="card-header bg-warning text-dark py-3">
-              <h5 class="card-title mb-0">
-                <i class="fas fa-list me-2"></i>
-                Danh sách yêu cầu chờ duyệt ({{ pendingRequests.length }})
-              </h5>
-            </div>
-            <div class="card-body p-0">
-              <div class="table-responsive">
-                <table class="table table-hover mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Độc giả</th>
-                      <th>Sách</th>
-                      <th>Ngày yêu cầu</th>
-                      <th>Ngày trả dự kiến</th>
-                      <th>Số lượng có sẵn</th>
-                      <th>Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr v-for="request in pendingRequests" :key="request._id">
-                      <td>
-                        <strong
-                          >{{ request.MaDocGia?.HoLot }}
-                          {{ request.MaDocGia?.Ten }}</strong
-                        >
-                        <br />
-                        <small class="text-muted">{{
-                          request.MaDocGia?.email
-                        }}</small>
-                      </td>
-                      <td>
-                        <strong>{{ request.MaSach?.TenSach }}</strong>
-                        <br />
-                        <small class="text-muted"
-                          >Tác giả: {{ request.MaSach?.TacGia }}</small
-                        >
-                      </td>
-                      <td>
-                        {{ formatDate(request.createdAt) }}
-                      </td>
-                      <td>
-                        {{ formatDate(request.NgayTraDuKien) }}
-                      </td>
-                      <td>
-                        <span
-                          :class="{
-                            'text-success': request.MaSach?.SoQuyen > 0,
-                            'text-danger': request.MaSach?.SoQuyen <= 0,
-                          }"
-                        >
-                          {{ request.MaSach?.SoQuyen || 0 }}
-                        </span>
-                      </td>
-                      <td>
-                        <div class="btn-group btn-group-sm">
-                          <button
-                            @click="approveRequest(request._id)"
-                            class="btn btn-success"
-                            :disabled="
-                              processingRequest === request._id ||
-                              request.MaSach?.SoQuyen <= 0
-                            "
-                            :title="
-                              request.MaSach?.SoQuyen <= 0
-                                ? 'Sách đã hết, không thể duyệt'
-                                : 'Duyệt yêu cầu'
-                            "
-                          >
-                            <span
-                              v-if="processingRequest === request._id"
-                              class="spinner-border spinner-border-sm me-1"
-                            ></span>
-                            <i class="fas fa-check me-1"></i>Duyệt
-                          </button>
-                          <button
-                            @click="rejectRequest(request._id)"
-                            class="btn btn-danger"
-                            :disabled="processingRequest === request._id"
-                          >
-                            <span
-                              v-if="processingRequest === request._id"
-                              class="spinner-border spinner-border-sm me-1"
-                            ></span>
-                            <i class="fas fa-times me-1"></i>Từ chối
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-                <div v-if="showConfirmModal" class="modal-backdrop show"></div>
-                <div v-if="showConfirmModal" class="modal fade show d-block">
-                  <div class="modal-dialog modal-dialog-centered">
-                    <div class="modal-content">
-                      <div class="modal-header" :class="modalHeaderClass">
-                        <h5 class="modal-title">
-                          <i :class="modalIconClass" class="me-2"></i
-                          >{{ modalTitle }}
-                        </h5>
-                        <button
-                          type="button"
-                          class="btn-close"
-                          @click="closeConfirmModal"
-                        ></button>
-                      </div>
-                      <div class="modal-body">
-                        <p v-if="confirmAction === 'approve'">
-                          Bạn có chắc chắn muốn <strong>duyệt</strong> yêu cầu
-                          mượn sách này?
-                        </p>
-                        <p v-if="confirmAction === 'reject'">
-                          Bạn có chắc chắn muốn <strong>từ chối</strong> yêu cầu
-                          mượn sách này?
-                        </p>
-                        <div
-                          class="request-details p-3 bg-light rounded mt-3"
-                          v-if="selectedRequest"
-                        >
-                          <p class="mb-1">
-                            <strong>Độc giả:</strong>
-                            {{ selectedRequest.MaDocGia?.HoLot }}
-                            {{ selectedRequest.MaDocGia?.Ten }}
-                          </p>
-                          <p class="mb-1">
-                            <strong>Sách:</strong>
-                            {{ selectedRequest.MaSach?.TenSach }}
-                          </p>
-                          <p class="mb-0">
-                            <strong>Số lượng có sẵn:</strong>
-                            {{ selectedRequest.MaSach?.SoQuyen || 0 }}
-                          </p>
-                        </div>
-                        <div
-                          v-if="
-                            confirmAction === 'approve' &&
-                            selectedRequest?.MaSach?.SoQuyen <= 0
-                          "
-                          class="alert alert-warning mt-3"
-                        >
-                          <i class="fas fa-exclamation-triangle me-2"></i>
-                          Sách đã hết, không thể duyệt yêu cầu!
-                        </div>
-                      </div>
-                      <div class="modal-footer">
-                        <button
-                          type="button"
-                          class="btn btn-secondary"
-                          @click="closeConfirmModal"
-                        >
-                          <i class="fas fa-times me-1"></i>Huỷ
-                        </button>
-                        <button
-                          type="button"
-                          class="btn"
-                          :class="confirmButtonClass"
-                          @click="executeConfirmAction"
-                          :disabled="
-                            processingRequest === selectedRequestId ||
-                            (confirmAction === 'approve' &&
-                              selectedRequest?.MaSach?.SoQuyen <= 0)
-                          "
-                        >
-                          <span
-                            v-if="processingRequest === selectedRequestId"
-                            class="spinner-border spinner-border-sm me-2"
-                          ></span>
-                          <i :class="confirmButtonIcon" class="me-1"></i
-                          >{{ confirmButtonText }}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+      <!-- Page Header -->
+      <div class="page-header mb-5">
+        <div class="d-flex align-items-center gap-3 mb-2">
+          <div class="header-icon">
+            <i class="fas fa-hourglass-half"></i>
+          </div>
+          <div>
+            <h1 class="page-title mb-0">Yêu cầu chờ duyệt</h1>
+            <p class="page-subtitle mb-0">Xét duyệt các yêu cầu mượn sách từ độc giả</p>
           </div>
         </div>
       </div>
+
+      <!-- Loading State -->
+      <div v-if="loading" class="state-card text-center py-5">
+        <div class="custom-spinner mb-3">
+          <div class="spinner-ring"></div>
+        </div>
+        <p class="text-muted fw-medium">Đang tải danh sách yêu cầu...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div v-else-if="pendingRequests.length === 0" class="state-card text-center py-5">
+        <div class="empty-icon mb-3">
+          <i class="fas fa-inbox"></i>
+        </div>
+        <h5 class="fw-semibold text-dark mb-1">Không có yêu cầu nào</h5>
+        <p class="text-muted mb-0">Tất cả yêu cầu mượn sách đã được xử lý.</p>
+      </div>
+
+      <!-- Requests Table -->
+      <div v-else class="table-card">
+        <div class="table-card-header">
+          <div class="d-flex align-items-center gap-2">
+            <i class="fas fa-list-ul"></i>
+            <span class="fw-semibold">Danh sách yêu cầu</span>
+          </div>
+          <span class="badge-count">{{ pendingRequests.length }} yêu cầu</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table custom-table mb-0">
+            <thead>
+              <tr>
+                <th>Độc giả</th>
+                <th>Sách yêu cầu</th>
+                <th>Ngày yêu cầu</th>
+                <th>Ngày trả dự kiến</th>
+                <th class="text-center">Số lượng</th>
+                <th class="text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="request in pendingRequests" :key="request._id" class="table-row">
+                <td>
+                  <div class="user-cell">
+                    <div class="user-avatar">
+                      {{ getInitials(request.MaDocGia?.HoLot, request.MaDocGia?.Ten) }}
+                    </div>
+                    <div>
+                      <div class="fw-semibold text-dark">
+                        {{ request.MaDocGia?.HoLot }} {{ request.MaDocGia?.Ten }}
+                      </div>
+                      <div class="text-muted small">{{ request.MaDocGia?.email }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <div class="book-cell">
+                    <div class="book-icon"><i class="fas fa-book"></i></div>
+                    <div>
+                      <div class="fw-semibold text-dark">{{ request.MaSach?.TenSach }}</div>
+                      <div class="text-muted small">{{ request.MaSach?.TacGia }}</div>
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="date-badge">
+                    <i class="fas fa-calendar-alt me-1"></i>
+                    {{ formatDate(request.createdAt) }}
+                  </span>
+                </td>
+                <td>
+                  <span class="date-badge return">
+                    <i class="fas fa-calendar-check me-1"></i>
+                    {{ formatDate(request.NgayTraDuKien) }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <span
+                    class="qty-badge"
+                    :class="request.MaSach?.SoQuyen > 0 ? 'qty-available' : 'qty-empty'"
+                  >
+                    {{ request.MaSach?.SoQuyen || 0 }}
+                  </span>
+                </td>
+                <td class="text-center">
+                  <div class="d-flex justify-content-center gap-2">
+                    <button
+                      @click="approveRequest(request._id)"
+                      class="action-btn approve-btn"
+                      :disabled="processingRequest === request._id || request.MaSach?.SoQuyen <= 0"
+                      :title="request.MaSach?.SoQuyen <= 0 ? 'Sách đã hết' : 'Duyệt yêu cầu'"
+                    >
+                      <span v-if="processingRequest === request._id" class="spinner-border spinner-border-sm"></span>
+                      <i v-else class="fas fa-check"></i>
+                      <span>Duyệt</span>
+                    </button>
+                    <button
+                      @click="rejectRequest(request._id)"
+                      class="action-btn reject-btn"
+                      :disabled="processingRequest === request._id"
+                    >
+                      <span v-if="processingRequest === request._id" class="spinner-border spinner-border-sm"></span>
+                      <i v-else class="fas fa-times"></i>
+                      <span>Từ chối</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
+
+    <!-- Confirm Modal -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showConfirmModal" class="modal-overlay" @click.self="closeConfirmModal">
+          <div class="confirm-modal" :class="confirmAction">
+            <div class="confirm-modal-header" :class="confirmAction">
+              <div class="modal-header-icon">
+                <i :class="confirmAction === 'approve' ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
+              </div>
+              <h5 class="mb-0 fw-bold">{{ modalTitle }}</h5>
+              <button class="modal-close-btn" @click="closeConfirmModal">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div class="confirm-modal-body">
+              <p class="confirm-message">
+                Bạn có chắc chắn muốn
+                <strong>{{ confirmAction === 'approve' ? 'duyệt' : 'từ chối' }}</strong>
+                yêu cầu mượn sách này?
+              </p>
+
+              <div v-if="selectedRequest" class="request-info-card">
+                <div class="info-row">
+                  <i class="fas fa-user me-2 text-muted"></i>
+                  <span class="text-muted">Độc giả:</span>
+                  <strong class="ms-1">{{ selectedRequest.MaDocGia?.HoLot }} {{ selectedRequest.MaDocGia?.Ten }}</strong>
+                </div>
+                <div class="info-row">
+                  <i class="fas fa-book me-2 text-muted"></i>
+                  <span class="text-muted">Sách:</span>
+                  <strong class="ms-1">{{ selectedRequest.MaSach?.TenSach }}</strong>
+                </div>
+                <div class="info-row">
+                  <i class="fas fa-layer-group me-2 text-muted"></i>
+                  <span class="text-muted">Số lượng có sẵn:</span>
+                  <strong class="ms-1" :class="selectedRequest.MaSach?.SoQuyen > 0 ? 'text-success' : 'text-danger'">
+                    {{ selectedRequest.MaSach?.SoQuyen || 0 }}
+                  </strong>
+                </div>
+              </div>
+
+              <div
+                v-if="confirmAction === 'approve' && selectedRequest?.MaSach?.SoQuyen <= 0"
+                class="warning-box"
+              >
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Sách đã hết, không thể duyệt yêu cầu!
+              </div>
+            </div>
+
+            <div class="confirm-modal-footer">
+              <button class="btn-cancel" @click="closeConfirmModal">
+                <i class="fas fa-arrow-left me-1"></i> Huỷ bỏ
+              </button>
+              <button
+                class="btn-confirm"
+                :class="confirmAction"
+                @click="executeConfirmAction"
+                :disabled="processingRequest === selectedRequestId || (confirmAction === 'approve' && selectedRequest?.MaSach?.SoQuyen <= 0)"
+              >
+                <span v-if="processingRequest === selectedRequestId" class="spinner-border spinner-border-sm me-2"></span>
+                <i v-else :class="confirmAction === 'approve' ? 'fas fa-check me-1' : 'fas fa-times me-1'"></i>
+                {{ confirmButtonText }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Toast Container -->
+    <div class="toast-stack" id="toastStack"></div>
   </div>
 </template>
 
@@ -225,53 +221,28 @@ const confirmAction = ref("");
 const selectedRequestId = ref("");
 const selectedRequest = ref(null);
 
-const modalTitle = computed(() => {
-  return confirmAction.value === "approve"
-    ? "Xác nhận duyệt yêu cầu"
-    : "Xác nhận từ chối yêu cầu";
-});
+const modalTitle = computed(() =>
+  confirmAction.value === "approve" ? "Xác nhận duyệt yêu cầu" : "Xác nhận từ chối yêu cầu"
+);
 
-const modalHeaderClass = computed(() => {
-  return confirmAction.value === "approve"
-    ? "bg-success text-white"
-    : "bg-danger text-white";
-});
+const confirmButtonText = computed(() =>
+  confirmAction.value === "approve" ? "Xác nhận duyệt" : "Xác nhận từ chối"
+);
 
-const modalIconClass = computed(() => {
-  return confirmAction.value === "approve"
-    ? "fas fa-check-circle"
-    : "fas fa-times-circle";
-});
-
-const confirmButtonClass = computed(() => {
-  return confirmAction.value === "approve" ? "btn-success" : "btn-danger";
-});
-
-const confirmButtonIcon = computed(() => {
-  return confirmAction.value === "approve" ? "fas fa-check" : "fas fa-times";
-});
-
-const confirmButtonText = computed(() => {
-  return confirmAction.value === "approve"
-    ? "Xác nhận duyệt"
-    : "Xác nhận từ chối";
-});
+const getInitials = (hoLot, ten) => {
+  const first = hoLot ? hoLot[0] : "";
+  const last = ten ? ten[0] : "";
+  return (first + last).toUpperCase() || "?";
+};
 
 const loadPendingRequests = async () => {
   try {
     loading.value = true;
-    console.log("Loading pending requests...");
-
     const response = await adminService.getPendingBorrows(adminStore.token);
     pendingRequests.value = response;
-
-    console.log("Pending requests loaded:", pendingRequests.value);
   } catch (error) {
     console.error("Error loading pending requests:", error);
-    alert(
-      "Lỗi khi tải danh sách yêu cầu: " +
-        (error.response?.data?.message || error.message)
-    );
+    showToast("error", "Lỗi khi tải danh sách: " + (error.response?.data?.message || error.message));
   } finally {
     loading.value = false;
   }
@@ -280,12 +251,10 @@ const loadPendingRequests = async () => {
 const approveRequest = (requestId) => {
   const request = pendingRequests.value.find((r) => r._id === requestId);
   if (!request) return;
-
   if (request.MaSach?.SoQuyen <= 0) {
     showToast("warning", "Sách đã hết, không thể duyệt!");
     return;
   }
-
   selectedRequestId.value = requestId;
   selectedRequest.value = request;
   confirmAction.value = "approve";
@@ -295,7 +264,6 @@ const approveRequest = (requestId) => {
 const rejectRequest = (requestId) => {
   const request = pendingRequests.value.find((r) => r._id === requestId);
   if (!request) return;
-
   selectedRequestId.value = requestId;
   selectedRequest.value = request;
   confirmAction.value = "reject";
@@ -304,34 +272,19 @@ const rejectRequest = (requestId) => {
 
 const executeConfirmAction = async () => {
   if (!selectedRequestId.value) return;
-
   try {
     processingRequest.value = selectedRequestId.value;
-
     if (confirmAction.value === "approve") {
-      console.log("Approving request:", selectedRequestId.value);
-      await adminService.approveBorrow(
-        adminStore.token,
-        selectedRequestId.value
-      );
-      showToast("success", "✅ Đã duyệt yêu cầu mượn sách thành công!");
+      await adminService.approveBorrow(adminStore.token, selectedRequestId.value);
+      showToast("success", "Đã duyệt yêu cầu mượn sách thành công!");
     } else {
-      console.log("Rejecting request:", selectedRequestId.value);
-      await adminService.rejectBorrow(
-        adminStore.token,
-        selectedRequestId.value
-      );
-      showToast("info", "⚠️ Đã từ chối yêu cầu mượn sách!");
+      await adminService.rejectBorrow(adminStore.token, selectedRequestId.value);
+      showToast("info", "Đã từ chối yêu cầu mượn sách.");
     }
-
     closeConfirmModal();
     await loadPendingRequests();
   } catch (error) {
-    console.error(`Error ${confirmAction.value}ing request:`, error);
-    showToast(
-      "error",
-      `Lỗi: ${error.response?.data?.message || error.message}`
-    );
+    showToast("error", "Lỗi: " + (error.response?.data?.message || error.message));
   } finally {
     processingRequest.value = "";
   }
@@ -339,7 +292,6 @@ const executeConfirmAction = async () => {
 
 const closeConfirmModal = () => {
   if (processingRequest.value) return;
-
   showConfirmModal.value = false;
   selectedRequestId.value = "";
   selectedRequest.value = null;
@@ -347,46 +299,26 @@ const closeConfirmModal = () => {
 };
 
 const showToast = (type, message) => {
+  const stack = document.getElementById("toastStack");
+  if (!stack) return;
+  const icons = { success: "check-circle", warning: "exclamation-triangle", error: "times-circle", info: "info-circle" };
   const toast = document.createElement("div");
-  toast.className = `toast-notification ${type}`;
-  toast.innerHTML = `
-    <div class="toast-content">
-      <i class="fas fa-${
-        type === "success"
-          ? "check-circle"
-          : type === "warning"
-          ? "exclamation-triangle"
-          : "exclamation-circle"
-      } me-2"></i>
-      ${message}
-    </div>
-  `;
-  document.body.appendChild(toast);
-
+  toast.className = `lib-toast lib-toast--${type}`;
+  toast.innerHTML = `<i class="fas fa-${icons[type] || "info-circle"}"></i><span>${message}</span>`;
+  stack.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
   setTimeout(() => {
-    toast.classList.add("show");
-  }, 10);
-
-  setTimeout(() => {
-    toast.classList.remove("show");
-    setTimeout(() => {
-      document.body.removeChild(toast);
-    }, 300);
-  }, 3000);
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 350);
+  }, 3200);
 };
 
 const formatDate = (dateString) => {
-  if (!dateString) return "Chưa có";
-
+  if (!dateString) return "—";
   try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("vi-VN", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-  } catch (error) {
-    return "Invalid date";
+    return new Date(dateString).toLocaleDateString("vi-VN", { year: "numeric", month: "2-digit", day: "2-digit" });
+  } catch {
+    return "—";
   }
 };
 
@@ -396,27 +328,323 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.admin-pending-page {
-  background-color: #f8f9fc;
-  min-height: calc(100vh - 76px);
+/* ── Design Tokens ─────────────────────────────────── */
+.pending-page {
+  --brand:      #8B3A3A;
+  --brand-dark: #6B2C2C;
+  --brand-light:#FDF0F0;
+  --accent:     #C0392B;
+  --success:    #27AE60;
+  --success-bg: #EAFAF1;
+  --danger:     #E74C3C;
+  --danger-bg:  #FDEDEC;
+  --warning:    #F39C12;
+  --warning-bg: #FEF9E7;
+  --info:       #2980B9;
+  --info-bg:    #EBF5FB;
+  --text:       #1A1A2E;
+  --text-muted: #6C757D;
+  --border:     #E8E8F0;
+  --surface:    #FFFFFF;
+  --bg:         #F5F4F2;
+  --radius:     12px;
+  --shadow:     0 2px 16px rgba(0,0,0,0.08);
+  --shadow-lg:  0 8px 40px rgba(0,0,0,0.14);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  min-height: 100vh;
 }
 
-.table th {
-  border-top: none;
-  font-weight: 600;
-  color: var(--primary-color);
+/* ── Page Header ────────────────────────────────────── */
+.page-header { border-bottom: 2px solid var(--border); padding-bottom: 1.5rem; }
+
+.header-icon {
+  width: 52px; height: 52px;
+  background: var(--brand);
+  color: #fff;
+  border-radius: var(--radius);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(139,58,58,.3);
 }
 
-.btn-group-sm > .btn {
-  border-radius: 4px;
+.page-title  { font-size: 1.75rem; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+.page-subtitle { color: var(--text-muted); font-size: 0.9rem; }
+
+/* ── State Cards (loading / empty) ─────────────────── */
+.state-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
 }
 
-.card {
-  border-radius: 10px;
+.custom-spinner { display: flex; justify-content: center; }
+.spinner-ring {
+  width: 44px; height: 44px;
+  border: 3px solid var(--border);
+  border-top-color: var(--brand);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-icon {
+  width: 72px; height: 72px;
+  background: var(--brand-light);
+  color: var(--brand);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  margin: 0 auto;
+}
+
+/* ── Table Card ─────────────────────────────────────── */
+.table-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
   overflow: hidden;
 }
 
-.card-header {
-  border-radius: 0 !important;
+.table-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: var(--brand);
+  color: #fff;
+  font-size: 0.95rem;
 }
+
+.badge-count {
+  background: rgba(255,255,255,.2);
+  color: #fff;
+  padding: 3px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+/* ── Custom Table ───────────────────────────────────── */
+.custom-table thead th {
+  background: #FAFAFA;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 0.85rem 1.2rem;
+  border-bottom: 2px solid var(--border);
+  border-top: none;
+  white-space: nowrap;
+}
+
+.custom-table tbody td {
+  padding: 1rem 1.2rem;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-row { transition: background 0.15s ease; }
+.table-row:hover { background: var(--brand-light); }
+.table-row:last-child td { border-bottom: none; }
+
+/* ── Cell Styles ────────────────────────────────────── */
+.user-cell, .book-cell { display: flex; align-items: center; gap: 0.75rem; }
+
+.user-avatar {
+  width: 38px; height: 38px; flex-shrink: 0;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.book-icon {
+  width: 38px; height: 38px; flex-shrink: 0;
+  background: var(--brand-light);
+  color: var(--brand);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem;
+}
+
+.date-badge {
+  display: inline-flex; align-items: center;
+  background: #F0F0F5;
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.date-badge.return { background: #EDF7F0; color: #2E7D5E; }
+
+.qty-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 36px; height: 28px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0 10px;
+}
+.qty-available { background: var(--success-bg); color: var(--success); }
+.qty-empty     { background: var(--danger-bg);  color: var(--danger);  }
+
+/* ── Action Buttons ─────────────────────────────────── */
+.action-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.approve-btn { background: var(--success-bg); color: var(--success); }
+.approve-btn:hover:not(:disabled) { background: var(--success); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(39,174,96,.3); }
+.reject-btn  { background: var(--danger-bg); color: var(--danger); }
+.reject-btn:hover:not(:disabled) { background: var(--danger); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(231,76,60,.3); }
+.action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ── Modal Overlay ──────────────────────────────────── */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(20, 20, 40, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+
+.confirm-modal {
+  background: var(--surface);
+  border-radius: 16px;
+  width: 100%; max-width: 460px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+.confirm-modal-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 1.25rem 1.5rem;
+  color: #fff;
+  position: relative;
+}
+.confirm-modal-header.approve { background: var(--success); }
+.confirm-modal-header.reject  { background: var(--danger);  }
+
+.modal-header-icon {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,.2);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.modal-close-btn {
+  position: absolute; right: 1.25rem; top: 50%; transform: translateY(-50%);
+  background: rgba(255,255,255,.2); border: none;
+  color: #fff; width: 30px; height: 30px;
+  border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
+}
+.modal-close-btn:hover { background: rgba(255,255,255,.35); }
+
+.confirm-modal-body { padding: 1.5rem; }
+.confirm-message { color: var(--text); margin-bottom: 1rem; }
+
+.request-info-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.info-row { display: flex; align-items: center; font-size: 0.88rem; }
+
+.warning-box {
+  display: flex; align-items: center;
+  background: var(--warning-bg);
+  color: #856404;
+  border: 1px solid #FFEAA7;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.88rem;
+  margin-top: 0.75rem;
+}
+
+.confirm-modal-footer {
+  display: flex; justify-content: flex-end; gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: #FAFAFA;
+}
+
+.btn-cancel {
+  padding: 8px 20px; border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted);
+  font-size: 0.9rem; font-weight: 500; cursor: pointer;
+  transition: all 0.2s;
+}
+.btn-cancel:hover { background: var(--border); color: var(--text); }
+
+.btn-confirm {
+  padding: 8px 22px; border-radius: 8px; border: none;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center;
+  color: #fff; transition: all 0.2s;
+}
+.btn-confirm.approve { background: var(--success); }
+.btn-confirm.approve:hover:not(:disabled) { background: #229954; box-shadow: 0 4px 12px rgba(39,174,96,.4); }
+.btn-confirm.reject  { background: var(--danger); }
+.btn-confirm.reject:hover:not(:disabled)  { background: #C0392B; box-shadow: 0 4px 12px rgba(231,76,60,.4); }
+.btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Modal Transition ───────────────────────────────── */
+.modal-fade-enter-active,
+.modal-fade-leave-active { transition: opacity 0.25s ease; }
+.modal-fade-enter-active .confirm-modal,
+.modal-fade-leave-active .confirm-modal { transition: transform 0.25s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
+.modal-fade-enter-from .confirm-modal { transform: scale(0.93) translateY(12px); }
+.modal-fade-leave-to   .confirm-modal { transform: scale(0.95) translateY(8px); }
+
+/* ── Toast ──────────────────────────────────────────── */
+.toast-stack {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  z-index: 10000;
+  display: flex; flex-direction: column; gap: 0.5rem;
+  pointer-events: none;
+}
+</style>
+
+<!-- Global toast styles (unscoped) -->
+<style>
+.lib-toast {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 0.88rem; font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.15);
+  opacity: 0; transform: translateX(20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  pointer-events: auto;
+  min-width: 260px; max-width: 360px;
+}
+.lib-toast.visible { opacity: 1; transform: translateX(0); }
+.lib-toast--success { background: #EAFAF1; color: #1E8449; border-left: 4px solid #27AE60; }
+.lib-toast--warning { background: #FEF9E7; color: #856404; border-left: 4px solid #F39C12; }
+.lib-toast--error   { background: #FDEDEC; color: #922B21; border-left: 4px solid #E74C3C; }
+.lib-toast--info    { background: #EBF5FB; color: #1A5276; border-left: 4px solid #2980B9; }
 </style>

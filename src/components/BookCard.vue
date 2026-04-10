@@ -1,282 +1,331 @@
 <template>
-  <div class="book-card card shadow-sm h-100">
-    <div class="book-image-container">
+  <div class="book-card" :class="{ 'book-card--unavailable': book.SoQuyen <= 0 }">
+
+    <!-- Cover Image -->
+    <div class="book-cover-wrap">
       <img
         v-if="book.HinhBia"
         :src="getImageUrl(book.HinhBia)"
         :alt="book.TenSach"
-        class="book-cover card-img-top"
+        class="book-cover"
+        @error="handleImageError"
       />
-      <div v-else class="book-image-placeholder">
-        <i class="fas fa-book fa-3x text-muted"></i>
-        <p class="text-muted small mt-2">Chưa có ảnh bìa</p>
+      <div v-else class="book-cover-placeholder">
+        <i class="fas fa-book"></i>
       </div>
+
+      <!-- Availability badge -->
+      <span class="availability-badge" :class="book.SoQuyen > 0 ? 'available' : 'unavailable'">
+        {{ book.SoQuyen > 0 ? 'Có Sẵn' : 'Hết Sách' }}
+      </span>
     </div>
 
-    <div class="card-body d-flex flex-column">
-      <div class="book-meta mb-2">
-        <span class="badge bg-secondary small">{{
-          book.MaSach || "Chưa có mã"
-        }}</span>
-        <span
-          class="badge ms-1"
-          :class="book.SoQuyen > 0 ? 'bg-success' : 'bg-danger'"
-        >
-          {{ book.SoQuyen > 0 ? "Có sẵn" : "Hết sách" }}
+    <!-- Body -->
+    <div class="book-body">
+      <p class="book-code">{{ book.MaSach || '—' }}</p>
+      <h3 class="book-title">{{ book.TenSach }}</h3>
+      <p class="book-author">
+        <i class="fas fa-user-edit"></i>
+        {{ book.TacGia || 'Đang cập nhật' }}
+      </p>
+
+      <div class="book-meta">
+        <span v-if="book.MaNXB?.TenNXB" class="meta-item">
+          <i class="fas fa-building"></i> {{ book.MaNXB.TenNXB }}
+        </span>
+        <span v-if="book.NamXuatBan" class="meta-item">
+          <i class="fas fa-calendar-alt"></i> {{ book.NamXuatBan }}
         </span>
       </div>
 
-      <h5 class="card-title text-primary fw-bold">{{ book.TenSach }}</h5>
+      <p class="book-price">{{ formatCurrency(book.DonGia) }}</p>
 
-      <p class="card-text text-muted mb-2">
-        <i class="fas fa-user-edit me-1"></i>
-        {{ book.TacGia || "Đang cập nhật" }}
-      </p>
-
-      <div class="book-price mb-3">
-        <span class="fw-bold text-success">{{
-          formatCurrency(book.DonGia)
-        }}</span>
+      <!-- Actions -->
+      <div class="book-actions">
+        <router-link :to="'/sach/' + book._id" class="btn-detail">
+          <i class="fas fa-eye"></i> Chi Tiết
+        </router-link>
+        <button
+          class="btn-borrow"
+          @click="borrowBook"
+          :disabled="!canBorrow || loadingBorrow"
+          :title="borrowTooltip"
+        >
+          <i class="fas" :class="loadingBorrow ? 'fa-spinner fa-spin' : 'fa-hand-holding'"></i>
+          Mượn
+        </button>
       </div>
 
-      <div class="book-details small text-muted mb-3">
-        <p class="mb-1" v-if="book.MaNXB?.TenNXB">
-          <i class="fas fa-building me-1"></i>
-          {{ book.MaNXB.TenNXB }}
-        </p>
-        <p class="mb-0" v-if="book.NamXuatBan">
-          <i class="fas fa-calendar-alt me-1"></i>
-          Năm: {{ book.NamXuatBan }}
-        </p>
-      </div>
-
-      <div class="action-buttons mt-auto">
-        <div class="row g-2">
-          <div class="col-6">
-            <router-link
-              :to="'/sach/' + book._id"
-              class="btn btn-outline-primary w-100"
-            >
-              <i class="fas fa-eye me-1"></i>Chi tiết
-            </router-link>
-          </div>
-          <div class="col-6">
-            <button
-              @click="borrowBook"
-              class="btn btn-primary w-100"
-              :disabled="!canBorrow"
-              :title="borrowTooltip"
-            >
-              <i class="fas fa-hand-holding me-1"></i>Mượn
-            </button>
-          </div>
-        </div>
+      <!-- Borrow message -->
+      <div v-if="borrowMessage" class="borrow-msg" :class="borrowMsgType">
+        <i :class="borrowMessageIcon"></i> {{ borrowMessage }}
       </div>
     </div>
 
-    <div v-if="borrowMessage" class="card-footer">
-      <div class="alert alert-sm mb-0" :class="borrowMessageClass">
-        <i :class="borrowMessageIcon" class="me-1"></i>
-        {{ borrowMessage }}
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { useRouter } from "vue-router";
-import { useUserStore } from "../stores/userStore";
-import muonService from "../services/muonService";
+import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/userStore'
+import muonService from '../services/muonService'
 
-const props = defineProps({
-  book: Object,
-});
+const props = defineProps({ book: Object })
+const emit = defineEmits(['bookBorrowed'])
 
-const router = useRouter();
-const userStore = useUserStore();
+const router = useRouter()
+const userStore = useUserStore()
 
-const loadingBorrow = ref(false);
-const borrowMessage = ref("");
-const borrowMessageClass = ref("");
-const borrowMessageIcon = ref("");
+const loadingBorrow = ref(false)
+const borrowMessage = ref('')
+const borrowMsgType = ref('')
+const borrowMessageIcon = ref('')
 
-const canBorrow = computed(() => {
-  return userStore.isLoggedIn && props.book?.SoQuyen > 0;
-});
+const canBorrow = computed(() => userStore.isLoggedIn && props.book?.SoQuyen > 0)
 
 const borrowTooltip = computed(() => {
-  if (!userStore.isLoggedIn) return "Vui lòng đăng nhập để mượn sách";
-  if (props.book?.SoQuyen <= 0) return "Sách đã hết";
-  return "Mượn sách này";
-});
+  if (!userStore.isLoggedIn) return 'Vui lòng đăng nhập để mượn sách'
+  if (props.book?.SoQuyen <= 0) return 'Sách đã hết'
+  return 'Mượn sách này'
+})
 
 const getImageUrl = (imagePath) => {
-  if (!imagePath) return "";
-  if (imagePath.startsWith("http")) return imagePath;
-  const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-  return `${baseUrl}${imagePath}`;
-};
+  if (!imagePath) return ''
+  if (imagePath.startsWith('http')) return imagePath
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000'
+  return `${baseUrl}${imagePath}`
+}
 
 const formatCurrency = (amount) => {
-  if (!amount) return "Miễn phí";
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-  }).format(amount);
-};
+  if (!amount) return 'Miễn phí'
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount)
+}
 
 const borrowBook = async () => {
-  if (!userStore.isLoggedIn) {
-    router.push("/login");
-    return;
-  }
-
+  if (!userStore.isLoggedIn) { router.push('/login'); return }
   if (!props.book || props.book.SoQuyen <= 0) {
-    showBorrowMessage(
-      "Sách hiện không có sẵn để mượn",
-      "warning",
-      "fa-exclamation-triangle"
-    );
-    return;
+    showBorrowMessage('Sách hiện không có sẵn để mượn', 'warning', 'fa-exclamation-triangle')
+    return
   }
-
   try {
-    loadingBorrow.value = true;
-    borrowMessage.value = "";
-
-    const borrowData = {
+    loadingBorrow.value = true
+    borrowMessage.value = ''
+    await muonService.requestBorrow({
       MaSach: props.book._id,
-      NgayTraDuKien: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-    };
-
-    console.log("Requesting to borrow book:", borrowData);
-
-    const result = await muonService.requestBorrow(borrowData);
-
-    showBorrowMessage(
-      "Yêu cầu mượn sách đã được gửi thành công! Vui lòng chờ admin duyệt.",
-      "success",
-      "fa-check-circle"
-    );
-
-    emit("bookBorrowed", props.book._id);
+      NgayTraDuKien: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    })
+    showBorrowMessage('Yêu cầu mượn đã gửi! Vui lòng chờ admin duyệt.', 'success', 'fa-check-circle')
+    emit('bookBorrowed', props.book._id)
   } catch (error) {
-    console.error("Borrow error:", error);
     showBorrowMessage(
-      error.response?.data?.message || "Mượn sách thất bại. Vui lòng thử lại.",
-      "danger",
-      "fa-exclamation-circle"
-    );
+      error.response?.data?.message || 'Mượn sách thất bại. Vui lòng thử lại.',
+      'danger', 'fa-exclamation-circle'
+    )
   } finally {
-    loadingBorrow.value = false;
+    loadingBorrow.value = false
   }
-};
+}
 
 const showBorrowMessage = (message, type, icon) => {
-  borrowMessage.value = message;
-  borrowMessageClass.value = `alert-${type}`;
-  borrowMessageIcon.value = `fas ${icon}`;
-
-  setTimeout(() => {
-    borrowMessage.value = "";
-  }, 5000);
-};
-
-const emit = defineEmits(["bookBorrowed"]);
+  borrowMessage.value = message
+  borrowMsgType.value = type
+  borrowMessageIcon.value = `fas ${icon}`
+  setTimeout(() => { borrowMessage.value = '' }, 5000)
+}
 
 const handleImageError = (event) => {
-  event.target.src =
-    "data:image/svg+xml;base64," +
-    btoa(`
-    <svg xmlns="http://www.w3.org/2000/svg" width="150" height="200" viewBox="0 0 150 200">
-      <rect width="150" height="200" fill="#f8f9fa"/>
-      <text x="50%" y="50%" font-family="Arial" font-size="12" fill="#6c757d" text-anchor="middle" dy=".3em">
-        No Image
-      </text>
-    </svg>
-  `);
-  event.target.onerror = null;
-};
+  event.target.style.display = 'none'
+  event.target.onerror = null
+}
 </script>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap');
+
 .book-card {
-  border: none;
-  border-radius: 12px;
-  transition: all 0.3s ease;
-  height: 100%;
-}
-
-.book-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
-}
-
-.book-image-container {
-  height: 220px;
+  font-family: 'DM Sans', sans-serif;
+  background: #fff;
+  border: 1px solid #e8e0d8;
+  border-radius: 8px;
   overflow: hidden;
-  border-radius: 12px 12px 0 0;
-  background-color: #f8f9fa;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  height: 100%;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
+.book-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(44, 36, 32, 0.1);
+}
+.book-card--unavailable { opacity: 0.82; }
 
+/* Cover */
+.book-cover-wrap {
+  position: relative;
+  height: 210px;
+  background: #f0ebe4;
+  overflow: hidden;
+  flex-shrink: 0;
+}
 .book-cover {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s;
+}
+.book-card:hover .book-cover { transform: scale(1.04); }
+.book-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: #c9b5af;
 }
 
-.book-card:hover .book-cover {
-  transform: scale(1.05);
+.availability-badge {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 0.25rem 0.6rem;
+  border-radius: 3px;
+}
+.availability-badge.available {
+  background: rgba(45, 107, 61, 0.9);
+  color: #fff;
+}
+.availability-badge.unavailable {
+  background: rgba(185, 74, 44, 0.9);
+  color: #fff;
 }
 
-.book-image-placeholder {
-  text-align: center;
-  color: #6c757d;
-  padding: 2rem;
+/* Body */
+.book-body {
+  padding: 1.1rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
-
-.card-body {
-  padding: 1.25rem;
+.book-code {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #b0a09a;
+  margin: 0 0 0.4rem;
 }
-
-.card-title {
-  font-size: 1rem;
-  line-height: 1.3;
-  height: 2.6rem;
-  overflow: hidden;
+.book-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #1a120e;
+  margin: 0 0 0.4rem;
+  line-height: 1.35;
   display: -webkit-box;
+  -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.65rem;
 }
+.book-author {
+  font-size: 0.82rem;
+  color: #9a8a84;
+  margin: 0 0 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.book-author i { font-size: 0.72rem; }
+
+.book-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.meta-item {
+  font-size: 0.75rem;
+  color: #9a8a84;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.meta-item i { font-size: 0.68rem; }
 
 .book-price {
-  font-size: 1.1rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #7c3d2d;
+  margin: 0 0 1rem;
 }
 
-.book-details p {
-  margin-bottom: 0.25rem;
+/* Actions */
+.book-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: auto;
 }
+.btn-detail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1.5px solid #c9b5af;
+  color: #4a3530;
+  border-radius: 4px;
+  padding: 0.5rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: 'DM Sans', sans-serif;
+  text-decoration: none;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.btn-detail:hover { border-color: #7c3d2d; color: #7c3d2d; }
+.btn-detail i { font-size: 0.75rem; }
 
-.action-buttons .btn {
-  border-radius: 6px;
-  font-size: 0.875rem;
-  padding: 0.375rem 0.5rem;
+.btn-borrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: #7c3d2d;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s;
+  letter-spacing: 0.02em;
 }
+.btn-borrow:hover:not(:disabled) { background: #5c2d1f; }
+.btn-borrow:disabled {
+  background: #c9b5af;
+  cursor: not-allowed;
+}
+.btn-borrow i { font-size: 0.75rem; }
 
-.card-footer {
-  border-top: 1px solid rgba(0, 0, 0, 0.125);
-  background-color: transparent;
-  padding: 0.75rem 1.25rem;
+/* Borrow message */
+.borrow-msg {
+  margin-top: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  line-height: 1.45;
 }
-
-.alert-sm {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  margin-bottom: 0;
-}
+.borrow-msg.success { background: #f0f7f2; color: #2d6b3d; border-left: 3px solid #2d6b3d; }
+.borrow-msg.warning { background: #fff8ec; color: #9a6b00; border-left: 3px solid #9a6b00; }
+.borrow-msg.danger  { background: #fff1ee; color: #b94a2c; border-left: 3px solid #b94a2c; }
 </style>
