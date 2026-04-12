@@ -26,6 +26,58 @@
 
       <!-- Actions -->
       <div class="nav-actions">
+
+        <!-- 🔔 CHUÔNG THÔNG BÁO (chỉ hiện khi đã đăng nhập) -->
+        <div class="bell-wrap" v-if="userStore.isLoggedIn" ref="bellRef">
+          <button class="icon-btn bell-btn" @click="toggleBell" title="Thông báo sách quá hạn">
+            <i class="fas fa-bell"></i>
+            <span v-if="overdueBooks.length > 0" class="bell-badge">{{ overdueBooks.length }}</span>
+          </button>
+
+          <!-- Dropdown thông báo -->
+          <Transition name="dropdown-fade">
+            <div v-if="bellOpen" class="bell-dropdown">
+              <div class="bell-dropdown-header">
+                <span class="bell-dropdown-title">🔔 Thông Báo</span>
+                <span class="bell-dropdown-count" v-if="overdueBooks.length > 0">
+                  {{ overdueBooks.length }} sách quá hạn
+                </span>
+              </div>
+
+              <!-- Không có sách quá hạn -->
+              <div v-if="overdueBooks.length === 0" class="bell-empty">
+                <i class="fas fa-check-circle"></i>
+                <p>Không có sách quá hạn!</p>
+              </div>
+
+              <!-- Danh sách sách quá hạn -->
+              <div v-else class="bell-list">
+                <div
+                  v-for="item in overdueBooks"
+                  :key="item._id"
+                  class="bell-item"
+                  @click="goToLichSu"
+                >
+                  <div class="bell-item-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </div>
+                  <div class="bell-item-info">
+                    <p class="bell-item-title">{{ item.MaSach?.TenSach || 'Sách không xác định' }}</p>
+                    <p class="bell-item-date">
+                      Hạn trả: {{ formatDate(item.NgayTraDuKien) }}
+                      <span class="bell-item-overdue">— quá {{ calcOverdueDays(item.NgayTraDuKien) }} ngày</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bell-dropdown-footer" @click="goToLichSu">
+                Xem lịch sử mượn →
+              </div>
+            </div>
+          </Transition>
+        </div>
+
         <!-- 🔍 Search toggle button -->
         <button class="icon-btn" title="Tìm kiếm" @click="toggleSearch">
           <i :class="searchOpen ? 'fas fa-times' : 'fas fa-search'"></i>
@@ -72,7 +124,7 @@
 
     </div>
 
-    <!-- 🔍 Search bar (trượt xuống khi mở) -->
+    <!-- 🔍 Search bar -->
     <Transition name="search-slide">
       <div v-if="searchOpen" class="search-bar-wrapper" @keydown.esc="closeSearch">
         <div class="search-bar-inner">
@@ -88,9 +140,7 @@
           <button v-if="searchQuery" class="search-clear-btn" @click="searchQuery = ''">
             <i class="fas fa-times"></i>
           </button>
-          <button class="search-submit-btn" @click="doSearch">
-            Tìm
-          </button>
+          <button class="search-submit-btn" @click="doSearch">Tìm</button>
         </div>
       </div>
     </Transition>
@@ -130,9 +180,10 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useUserStore } from '../stores/userStore'
 import { useRouter } from 'vue-router'
+import muonService from '../services/muonService'
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -150,29 +201,89 @@ const confirmLogout = () => {
 // ── Search ──
 const searchOpen  = ref(false)
 const searchQuery = ref('')
-const searchInput = ref(null)   // template ref tới <input>
+const searchInput = ref(null)
 
 const toggleSearch = async () => {
   searchOpen.value = !searchOpen.value
   if (searchOpen.value) {
-    await nextTick()             // đợi DOM render xong
-    searchInput.value?.focus()  // focus vào ô input
+    await nextTick()
+    searchInput.value?.focus()
   } else {
     searchQuery.value = ''
   }
 }
-
 const closeSearch = () => {
   searchOpen.value  = false
   searchQuery.value = ''
 }
-
 const doSearch = () => {
   const q = searchQuery.value.trim()
   if (!q) return
   closeSearch()
   router.push({ path: '/sach', query: { q } })
 }
+
+// ── Bell / Thông báo quá hạn ──
+const bellOpen    = ref(false)
+const bellRef     = ref(null)
+const overdueBooks = ref([])
+
+const toggleBell = () => {
+  bellOpen.value = !bellOpen.value
+}
+
+const goToLichSu = () => {
+  bellOpen.value = false
+  router.push('/lich-su-muon')
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('vi-VN')
+}
+
+const calcOverdueDays = (dateStr) => {
+  if (!dateStr) return 0
+  const diff = Date.now() - new Date(dateStr).getTime()
+  return Math.floor(diff / (1000 * 60 * 60 * 24))
+}
+
+const loadOverdueBooks = async () => {
+  if (!userStore.isLoggedIn) return
+  try {
+    const all = await muonService.getUserBorrows()
+    const now = new Date()
+    overdueBooks.value = all.filter(item =>
+      item.status === 'approved' &&
+      item.NgayTraDuKien &&
+      new Date(item.NgayTraDuKien) < now
+    )
+  } catch (e) {
+    console.error('Không tải được thông báo:', e)
+  }
+}
+
+// Đóng bell khi click ra ngoài
+const handleClickOutside = (e) => {
+  if (bellRef.value && !bellRef.value.contains(e.target)) {
+    bellOpen.value = false
+  }
+}
+
+// Load lại khi user đăng nhập
+watch(() => userStore.isLoggedIn, (val) => {
+  if (val) loadOverdueBooks()
+  else overdueBooks.value = []
+})
+
+onMounted(() => {
+  loadOverdueBooks()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
@@ -258,7 +369,157 @@ const doSearch = () => {
 }
 .icon-btn:hover { color: #2c2420; background: rgba(44, 36, 32, 0.06); }
 
-/* Dropdown */
+/* ── BELL ── */
+.bell-wrap {
+  position: relative;
+}
+.bell-btn {
+  position: relative;
+}
+.bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.bell-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  background: #fff;
+  border: 1px solid #e8e0d8;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(44, 36, 32, 0.15);
+  z-index: 300;
+  overflow: hidden;
+}
+.bell-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #e8e0d8;
+  background: #faf8f5;
+}
+.bell-dropdown-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #2c2420;
+  font-family: 'DM Sans', sans-serif;
+}
+.bell-dropdown-count {
+  font-size: 0.75rem;
+  background: #fdedec;
+  color: #e74c3c;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* Empty */
+.bell-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #9a8a84;
+}
+.bell-empty i {
+  font-size: 2rem;
+  color: #27ae60;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+.bell-empty p {
+  font-size: 0.85rem;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/* List */
+.bell-list {
+  max-height: 280px;
+  overflow-y: auto;
+}
+.bell-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f5f1ec;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bell-item:hover { background: #fff8f6; }
+.bell-item:last-child { border-bottom: none; }
+.bell-item-icon {
+  width: 32px;
+  height: 32px;
+  background: #fdedec;
+  color: #e74c3c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.bell-item-info { flex: 1; min-width: 0; }
+.bell-item-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2c2420;
+  margin: 0 0 0.2rem;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bell-item-date {
+  font-size: 0.75rem;
+  color: #9a8a84;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+.bell-item-overdue {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+.bell-dropdown-footer {
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: #7c3d2d;
+  font-weight: 500;
+  cursor: pointer;
+  border-top: 1px solid #e8e0d8;
+  background: #faf8f5;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.15s;
+}
+.bell-dropdown-footer:hover { background: #f0ebe4; }
+
+/* Transition dropdown */
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to { opacity: 0; transform: translateY(-6px); }
+
+/* Dropdown account */
 .nav-dropdown { position: relative; }
 .btn-account {
   display: flex;
@@ -352,10 +613,7 @@ const doSearch = () => {
   padding: 0 0.75rem;
   transition: border-color 0.2s;
 }
-.search-bar-inner:focus-within {
-  border-color: #7c3d2d;
-  background: #fff;
-}
+.search-bar-inner:focus-within { border-color: #7c3d2d; background: #fff; }
 .search-bar-icon { color: #9a8a84; font-size: 0.9rem; flex-shrink: 0; }
 .search-bar-input {
   flex: 1;
@@ -394,113 +652,38 @@ const doSearch = () => {
 }
 .search-submit-btn:hover { background: #5c2d1f; }
 
-/* Transition trượt xuống */
 .search-slide-enter-active,
-.search-slide-leave-active {
-  transition: max-height 0.25s ease, opacity 0.2s ease;
-  overflow: hidden;
-  max-height: 80px;
-}
+.search-slide-leave-active { transition: max-height 0.25s ease, opacity 0.2s ease; overflow: hidden; max-height: 80px; }
 .search-slide-enter-from,
-.search-slide-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
+.search-slide-leave-to { max-height: 0; opacity: 0; }
 
 /* ── MODAL ── */
 .modal-overlay {
-  position: fixed;
-  inset: 0;
+  position: fixed; inset: 0;
   background: rgba(26, 18, 14, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1.5rem;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; padding: 1.5rem;
 }
 .modal-box {
-  background: #faf8f5;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 420px;
+  background: #faf8f5; border-radius: 8px;
+  width: 100%; max-width: 420px;
   border: 1px solid #e8e0d8;
 }
 .modal-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  display: flex; justify-content: space-between; align-items: flex-start;
   padding: 1.5rem 1.75rem 1.1rem;
   border-bottom: 1px solid #e8e0d8;
 }
-.modal-tag {
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
-  color: #7c3d2d;
-  font-weight: 500;
-  margin: 0 0 0.25rem;
-  font-family: 'DM Sans', sans-serif;
-}
-.modal-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #1a120e;
-  margin: 0;
-}
-.modal-close {
-  background: none;
-  border: none;
-  color: #9a8a84;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  transition: color 0.2s;
-}
+.modal-tag { font-size: 0.7rem; letter-spacing: 0.18em; color: #7c3d2d; font-weight: 500; margin: 0 0 0.25rem; font-family: 'DM Sans', sans-serif; }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: #1a120e; margin: 0; }
+.modal-close { background: none; border: none; color: #9a8a84; font-size: 1rem; cursor: pointer; padding: 0.25rem; transition: color 0.2s; }
 .modal-close:hover { color: #2c2420; }
 .modal-body-content { padding: 1.5rem 1.75rem; }
-.modal-desc {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.9rem;
-  color: #4a3530;
-  line-height: 1.65;
-  margin: 0 0 0.75rem;
-}
-.modal-footer-btns {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.75rem 1.5rem;
-  border-top: 1px solid #e8e0d8;
-}
-.btn-ghost-sm {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: none;
-  border: 1.5px solid #c9b5af;
-  color: #4a3530;
-  border-radius: 4px;
-  padding: 0.55rem 1.25rem;
-  font-size: 0.85rem;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+.modal-desc { font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: #4a3530; line-height: 1.65; margin: 0 0 0.75rem; }
+.modal-footer-btns { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1rem 1.75rem 1.5rem; border-top: 1px solid #e8e0d8; }
+.btn-ghost-sm { display: flex; align-items: center; gap: 0.4rem; background: none; border: 1.5px solid #c9b5af; color: #4a3530; border-radius: 4px; padding: 0.55rem 1.25rem; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
 .btn-ghost-sm:hover { border-color: #7c3d2d; color: #7c3d2d; }
-.btn-confirm {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: #7c3d2d;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.55rem 1.25rem;
-  font-size: 0.85rem;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  transition: background 0.2s;
-}
+.btn-confirm { display: flex; align-items: center; gap: 0.4rem; background: #7c3d2d; color: #fff; border: none; border-radius: 4px; padding: 0.55rem 1.25rem; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s; }
 .btn-confirm:hover { background: #5c2d1f; }
 
 /* ── RESPONSIVE ── */
@@ -512,5 +695,6 @@ const doSearch = () => {
   .nav-links { display: none; }
   .nav-inner { padding: 0.85rem 1rem; }
   .search-bar-wrapper { padding: 0.65rem 1rem; }
+  .bell-dropdown { width: 280px; right: -60px; }
 }
 </style>

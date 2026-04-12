@@ -27,8 +27,63 @@
         </router-link>
       </div>
 
-      <!-- Account dropdown -->
+      <!-- Actions -->
       <div class="admin-nav-actions">
+
+        <!-- 🔔 CHUÔNG THÔNG BÁO ADMIN -->
+        <div class="bell-wrap" v-if="adminStore.isLoggedIn" ref="bellRef">
+          <button class="admin-icon-btn bell-btn" @click="toggleBell" title="Sách quá hạn">
+            <i class="fas fa-bell"></i>
+            <span v-if="overdueList.length > 0" class="bell-badge">{{ overdueList.length }}</span>
+          </button>
+
+          <Transition name="dropdown-fade">
+            <div v-if="bellOpen" class="bell-dropdown">
+              <div class="bell-dropdown-header">
+                <span class="bell-dropdown-title">🔔 Sách Quá Hạn</span>
+                <span class="bell-dropdown-count" v-if="overdueList.length > 0">
+                  {{ overdueList.length }} trường hợp
+                </span>
+              </div>
+
+              <!-- Không có quá hạn -->
+              <div v-if="overdueList.length === 0" class="bell-empty">
+                <i class="fas fa-check-circle"></i>
+                <p>Không có sách quá hạn!</p>
+              </div>
+
+              <!-- Danh sách quá hạn -->
+              <div v-else class="bell-list">
+                <div
+                  v-for="item in overdueList"
+                  :key="item._id"
+                  class="bell-item"
+                  @click="goToManage"
+                >
+                  <div class="bell-item-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                  </div>
+                  <div class="bell-item-info">
+                    <p class="bell-item-title">{{ item.MaSach?.TenSach || 'Sách không xác định' }}</p>
+                    <p class="bell-item-reader">
+                      Độc giả: {{ item.MaDocGia?.HoLot }} {{ item.MaDocGia?.Ten }}
+                    </p>
+                    <p class="bell-item-date">
+                      Hạn trả: {{ formatDate(item.NgayTraDuKien) }}
+                      <span class="bell-item-overdue">— quá {{ calcOverdueDays(item.NgayTraDuKien) }} ngày</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="bell-dropdown-footer" @click="goToManage">
+                Xem lịch sử mượn →
+              </div>
+            </div>
+          </Transition>
+        </div>
+
+        <!-- Account dropdown -->
         <div class="admin-dropdown">
           <button class="admin-btn-account">
             <i class="fas fa-user-cog"></i>
@@ -37,7 +92,6 @@
           </button>
 
           <div class="admin-dropdown-menu">
-            <!-- Chưa đăng nhập -->
             <template v-if="!adminStore.isLoggedIn">
               <p class="dropdown-section-label">Chưa đăng nhập</p>
               <router-link to="/admin/login" class="admin-dropdown-item">
@@ -45,7 +99,6 @@
               </router-link>
             </template>
 
-            <!-- Đã đăng nhập -->
             <template v-else>
               <div class="dropdown-info">
                 <p class="dropdown-section-label">Đang đăng nhập</p>
@@ -101,23 +154,84 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAdminStore } from '../stores/adminStore'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const adminStore = useAdminStore()
 const router = useRouter()
 
 const showLogoutModal = ref(false)
-
 const showLogoutConfirm = () => { showLogoutModal.value = true }
 const closeLogoutModal = () => { showLogoutModal.value = false }
-
 const confirmLogout = () => {
   adminStore.logout()
   closeLogoutModal()
   router.push('/admin/login')
 }
+
+// ── Bell Admin ──
+const bellOpen    = ref(false)
+const bellRef     = ref(null)
+const overdueList = ref([])
+
+const toggleBell = () => { bellOpen.value = !bellOpen.value }
+
+const goToManage = () => {
+  bellOpen.value = false
+  router.push('/admin/borrow-all')
+}
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('vi-VN')
+}
+
+const calcOverdueDays = (dateStr) => {
+  if (!dateStr) return 0
+  const diff = Date.now() - new Date(dateStr).getTime()
+  return Math.floor(diff / (1000 * 60 * 60 * 24))
+}
+
+const loadOverdueAdmin = async () => {
+  if (!adminStore.isLoggedIn) return
+  try {
+    const res = await axios.get('http://localhost:3000/api/muon', {
+      headers: {
+        Authorization: `Bearer ${adminStore.token}`
+      }
+    })
+    const now = new Date()
+    overdueList.value = res.data.filter(item =>
+      item.status === 'approved' &&
+      item.NgayTraDuKien &&
+      new Date(item.NgayTraDuKien) < now
+    )
+  } catch (e) {
+    console.error('Không tải được danh sách quá hạn:', e)
+  }
+}
+
+const handleClickOutside = (e) => {
+  if (bellRef.value && !bellRef.value.contains(e.target)) {
+    bellOpen.value = false
+  }
+}
+
+watch(() => adminStore.isLoggedIn, (val) => {
+  if (val) loadOverdueAdmin()
+  else overdueList.value = []
+})
+
+onMounted(() => {
+  loadOverdueAdmin()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleClickOutside)
+})
 </script>
 
 <style scoped>
@@ -185,9 +299,157 @@ const confirmLogout = () => {
 .admin-nav-link.router-link-active { color: #e8b89a; background: rgba(232,184,154,0.1); }
 
 /* Actions */
-.admin-nav-actions { flex-shrink: 0; }
+.admin-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
 
-/* Dropdown */
+/* ── BELL ADMIN ── */
+.bell-wrap { position: relative; }
+.admin-icon-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.45rem 0.5rem;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+  position: relative;
+}
+.admin-icon-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
+.bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Sans', sans-serif;
+}
+
+.bell-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 340px;
+  background: #fff;
+  border: 1px solid #e8e0d8;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  z-index: 300;
+  overflow: hidden;
+}
+.bell-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #e8e0d8;
+  background: #faf8f5;
+}
+.bell-dropdown-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #2c2420;
+  font-family: 'DM Sans', sans-serif;
+}
+.bell-dropdown-count {
+  font-size: 0.75rem;
+  background: #fdedec;
+  color: #e74c3c;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+}
+.bell-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: #9a8a84;
+}
+.bell-empty i { font-size: 2rem; color: #27ae60; margin-bottom: 0.5rem; display: block; }
+.bell-empty p { font-size: 0.85rem; margin: 0; font-family: 'DM Sans', sans-serif; }
+
+.bell-list { max-height: 300px; overflow-y: auto; }
+.bell-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #f5f1ec;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.bell-item:hover { background: #fff8f6; }
+.bell-item:last-child { border-bottom: none; }
+.bell-item-icon {
+  width: 32px;
+  height: 32px;
+  background: #fdedec;
+  color: #e74c3c;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.bell-item-info { flex: 1; min-width: 0; }
+.bell-item-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2c2420;
+  margin: 0 0 0.15rem;
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bell-item-reader {
+  font-size: 0.78rem;
+  color: #6b5c55;
+  margin: 0 0 0.15rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.bell-item-date {
+  font-size: 0.75rem;
+  color: #9a8a84;
+  margin: 0;
+  font-family: 'DM Sans', sans-serif;
+}
+.bell-item-overdue { color: #e74c3c; font-weight: 600; }
+
+.bell-dropdown-footer {
+  padding: 0.75rem 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: #7c3d2d;
+  font-weight: 500;
+  cursor: pointer;
+  border-top: 1px solid #e8e0d8;
+  background: #faf8f5;
+  font-family: 'DM Sans', sans-serif;
+  transition: background 0.15s;
+}
+.bell-dropdown-footer:hover { background: #f0ebe4; }
+
+.dropdown-fade-enter-active,
+.dropdown-fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
+.dropdown-fade-enter-from,
+.dropdown-fade-leave-to { opacity: 0; transform: translateY(-6px); }
+
+/* Dropdown account */
 .admin-dropdown { position: relative; }
 .admin-btn-account {
   display: flex;
@@ -234,26 +496,10 @@ const confirmLogout = () => {
   font-family: 'DM Sans', sans-serif;
 }
 .dropdown-info { padding: 0 0.25rem; }
-.dropdown-admin-name {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: #2c2420;
-  padding: 0.1rem 0.75rem 0;
-  margin: 0;
-  font-family: 'DM Sans', sans-serif;
-}
-.dropdown-admin-id {
-  font-size: 0.78rem;
-  color: #9a8a84;
-  padding: 0.1rem 0.75rem 0.4rem;
-  margin: 0;
-  font-family: 'DM Sans', sans-serif;
-}
-.dropdown-divider {
-  height: 1px;
-  background: #ede8e3;
-  margin: 0.3rem 0.5rem;
-}
+.dropdown-admin-name { font-size: 0.9rem; font-weight: 500; color: #2c2420; padding: 0.1rem 0.75rem 0; margin: 0; font-family: 'DM Sans', sans-serif; }
+.dropdown-admin-id { font-size: 0.78rem; color: #9a8a84; padding: 0.1rem 0.75rem 0.4rem; margin: 0; font-family: 'DM Sans', sans-serif; }
+.dropdown-divider { height: 1px; background: #ede8e3; margin: 0.3rem 0.5rem; }
+
 .admin-dropdown-item {
   display: flex;
   align-items: center;
@@ -278,101 +524,19 @@ const confirmLogout = () => {
 .admin-dropdown-item--danger i { color: #b94a2c; }
 
 /* ── MODAL ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(26, 18, 14, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1.5rem;
-}
-.modal-box {
-  background: #faf8f5;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 440px;
-  border: 1px solid #e8e0d8;
-}
-.modal-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 1.5rem 1.75rem 1.1rem;
-  border-bottom: 1px solid #e8e0d8;
-}
-.modal-tag {
-  font-size: 0.7rem;
-  letter-spacing: 0.18em;
-  color: #7c3d2d;
-  font-weight: 500;
-  margin: 0 0 0.25rem;
-  font-family: 'DM Sans', sans-serif;
-}
-.modal-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: #1a120e;
-  margin: 0;
-}
-.modal-close {
-  background: none;
-  border: none;
-  color: #9a8a84;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.25rem;
-  transition: color 0.2s;
-}
+.modal-overlay { position: fixed; inset: 0; background: rgba(26, 18, 14, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem; }
+.modal-box { background: #faf8f5; border-radius: 8px; width: 100%; max-width: 440px; border: 1px solid #e8e0d8; }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.5rem 1.75rem 1.1rem; border-bottom: 1px solid #e8e0d8; }
+.modal-tag { font-size: 0.7rem; letter-spacing: 0.18em; color: #7c3d2d; font-weight: 500; margin: 0 0 0.25rem; font-family: 'DM Sans', sans-serif; }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; color: #1a120e; margin: 0; }
+.modal-close { background: none; border: none; color: #9a8a84; font-size: 1rem; cursor: pointer; padding: 0.25rem; transition: color 0.2s; }
 .modal-close:hover { color: #2c2420; }
-.modal-body-content {
-  padding: 1.5rem 1.75rem;
-}
-.modal-desc {
-  font-family: 'DM Sans', sans-serif;
-  font-size: 0.9rem;
-  color: #4a3530;
-  line-height: 1.65;
-  margin: 0 0 0.75rem;
-}
-.modal-footer-btns {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1rem 1.75rem 1.5rem;
-  border-top: 1px solid #e8e0d8;
-}
-.btn-ghost-sm {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: none;
-  border: 1.5px solid #c9b5af;
-  color: #4a3530;
-  border-radius: 4px;
-  padding: 0.55rem 1.25rem;
-  font-size: 0.85rem;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s;
-}
+.modal-body-content { padding: 1.5rem 1.75rem; }
+.modal-desc { font-family: 'DM Sans', sans-serif; font-size: 0.9rem; color: #4a3530; line-height: 1.65; margin: 0 0 0.75rem; }
+.modal-footer-btns { display: flex; justify-content: flex-end; gap: 0.75rem; padding: 1rem 1.75rem 1.5rem; border-top: 1px solid #e8e0d8; }
+.btn-ghost-sm { display: flex; align-items: center; gap: 0.4rem; background: none; border: 1.5px solid #c9b5af; color: #4a3530; border-radius: 4px; padding: 0.55rem 1.25rem; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; }
 .btn-ghost-sm:hover { border-color: #7c3d2d; color: #7c3d2d; }
-.btn-confirm {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: #7c3d2d;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.55rem 1.25rem;
-  font-size: 0.85rem;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  transition: background 0.2s;
-}
+.btn-confirm { display: flex; align-items: center; gap: 0.4rem; background: #7c3d2d; color: #fff; border: none; border-radius: 4px; padding: 0.55rem 1.25rem; font-size: 0.85rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.2s; }
 .btn-confirm:hover { background: #5c2d1f; }
 
 /* ── RESPONSIVE ── */
@@ -383,5 +547,6 @@ const confirmLogout = () => {
 @media (max-width: 768px) {
   .admin-nav-links { display: none; }
   .admin-nav-inner { padding: 0.85rem 1rem; }
+  .bell-dropdown { width: 280px; right: -60px; }
 }
 </style>

@@ -137,7 +137,7 @@
                   {{ borrowButtonText }}
                 </button>
 
-                <!-- ── NÚT QR ── -->
+                <!-- NÚT QR -->
                 <button class="btn-qr" @click="showQR = true" title="Xem mã QR">
                   <i class="fas fa-qrcode me-2"></i>Mã QR
                 </button>
@@ -150,10 +150,47 @@
             </div>
           </div>
         </div>
+
+        <!-- RELATED BOOKS - CÙNG TÁC GIẢ -->
+        <div v-if="relatedBooks.length > 0" class="related-section">
+          <div class="related-header">
+            <div class="related-tag">✦ GỢI Ý</div>
+            <h3 class="related-title">
+              Sách cùng tác giả <span class="related-author">"{{ book.TacGia }}"</span>
+            </h3>
+          </div>
+          <div class="related-grid">
+            <div
+              v-for="rb in relatedBooks"
+              :key="rb._id"
+              class="related-card"
+              @click="goToBook(rb._id)"
+            >
+              <div class="related-cover">
+                <img
+                  v-if="rb.HinhBia"
+                  :src="getImageUrl(rb.HinhBia)"
+                  :alt="rb.TenSach"
+                />
+                <div v-else class="related-cover-placeholder">
+                  <i class="fas fa-book-open"></i>
+                </div>
+              </div>
+              <div class="related-info">
+                <p class="related-name">{{ rb.TenSach }}</p>
+                <p class="related-year">{{ rb.NamXuatBan }}</p>
+                <span class="related-avail" :class="rb.SoQuyen > 0 ? 'avail' : 'unavail'">
+                  {{ rb.SoQuyen > 0 ? 'Còn sách' : 'Hết sách' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
-    <!-- ── QR MODAL ── -->
+    <!-- QR MODAL -->
     <Teleport to="body">
       <Transition name="modal-fade">
         <div v-if="showQR" class="qr-overlay" @click.self="showQR = false">
@@ -204,6 +241,7 @@ const borrowMessage  = ref("");
 const borrowMsgType  = ref("");
 const showQR         = ref(false);
 const qrCanvas       = ref(null);
+const relatedBooks   = ref([]);
 
 const bookUrl = computed(() =>
   `${window.location.origin}/sach/${route.params.id}`
@@ -253,6 +291,22 @@ const borrowButtonText = computed(() => {
 const formatCurrency = (amount) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(amount);
 
+const goToBook = (id) => {
+  router.push(`/sach/${id}`);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const loadRelatedBooks = async (tacGia, currentId) => {
+  try {
+    const all = await sachService.getAll();
+    relatedBooks.value = all
+      .filter(b => b.TacGia === tacGia && b._id !== currentId)
+      .slice(0, 4);
+  } catch (e) {
+    console.error('Không tải được sách liên quan:', e);
+  }
+};
+
 const borrow = async () => {
   if (!userStore.isLoggedIn) { router.push("/login"); return; }
   if (!book.value || book.value.SoQuyen <= 0) {
@@ -279,8 +333,10 @@ const borrow = async () => {
 
 const loadBook = async () => {
   try {
-    loading.value = true; error.value = "";
+    loading.value = true;
+    error.value = "";
     book.value = await sachService.getOne(route.params.id);
+    await loadRelatedBooks(book.value.TacGia, book.value._id);
   } catch (err) {
     error.value = err.response?.data?.message || "Không thể tải thông tin sách";
   } finally {
@@ -288,11 +344,16 @@ const loadBook = async () => {
   }
 };
 
+// Reload khi chuyển sang sách khác cùng tác giả
+watch(() => route.params.id, () => {
+  loadBook();
+});
+
 onMounted(() => loadBook());
 </script>
 
 <style scoped>
-/* ── Tokens ─────────────────────────────────────────── */
+/* ── Tokens ── */
 .book-detail-page {
   --brand:       #8B3A3A;
   --brand-dark:  #6B2C2C;
@@ -315,7 +376,7 @@ onMounted(() => loadBook());
   min-height: 100vh;
 }
 
-/* ── States ──────────────────────────────────────────── */
+/* ── States ── */
 .state-card {
   background: var(--surface); border-radius: var(--radius);
   border: 1px solid var(--border); box-shadow: var(--shadow);
@@ -341,21 +402,21 @@ onMounted(() => loadBook());
 }
 .btn-back-link:hover { background: var(--brand-dark); }
 
-/* ── Breadcrumb ──────────────────────────────────────── */
+/* ── Breadcrumb ── */
 .breadcrumb-wrap { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
 .breadcrumb-link { color: var(--brand); text-decoration: none; font-weight: 500; transition: color .2s; }
 .breadcrumb-link:hover { color: var(--brand-dark); }
 .breadcrumb-sep  { color: var(--text-muted); font-size: .7rem; }
 .breadcrumb-current { color: var(--text-muted); }
 
-/* ── Detail Card ─────────────────────────────────────── */
+/* ── Detail Card ── */
 .detail-card {
   background: var(--surface); border-radius: 20px;
   border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden;
 }
 .detail-grid { display: grid; grid-template-columns: 280px 1fr; gap: 0; }
 
-/* ── Cover Column ────────────────────────────────────── */
+/* ── Cover Column ── */
 .cover-col {
   background: linear-gradient(160deg, var(--brand-light) 0%, #F0EAE0 100%);
   padding: 2.5rem 2rem;
@@ -379,23 +440,23 @@ onMounted(() => loadBook());
 .avail-badge.available   { background: var(--success-bg); color: var(--success); }
 .avail-badge.unavailable { background: var(--danger-bg);  color: var(--danger);  }
 
-/* ── Info Column ─────────────────────────────────────── */
+/* ── Info Column ── */
 .info-col { padding: 2.5rem; }
 .book-title { font-size: 1.75rem; font-weight: 800; color: var(--text); letter-spacing: -.5px; line-height: 1.3; margin-bottom: 1.75rem; }
 
-/* ── Meta Grid ───────────────────────────────────────── */
+/* ── Meta Grid ── */
 .meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .85rem; margin-bottom: 1.75rem; }
 .meta-item { display: flex; align-items: flex-start; gap: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
 .meta-icon { width: 34px; height: 34px; flex-shrink: 0; background: var(--brand-light); color: var(--brand); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: .85rem; }
 .meta-label { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
 .meta-value { font-size: .9rem; font-weight: 600; color: var(--text); }
 
-/* ── Description ─────────────────────────────────────── */
+/* ── Description ── */
 .description-box { background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--brand); border-radius: 0 10px 10px 0; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
 .desc-header { font-size: .78rem; font-weight: 700; color: var(--brand); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .5rem; }
 .desc-text { font-size: .9rem; color: var(--text-muted); line-height: 1.7; margin: 0; }
 
-/* ── Actions ─────────────────────────────────────────── */
+/* ── Actions ── */
 .action-divider { border-top: 1px solid var(--border); margin-bottom: 1.25rem; }
 .borrow-message { padding: 10px 14px; border-radius: 8px; font-size: .88rem; margin-bottom: 1.1rem; display: flex; align-items: center; }
 .borrow-message.success { background: var(--success-bg); color: #1E8449; border: 1px solid #A9DFBF; }
@@ -413,7 +474,6 @@ onMounted(() => loadBook());
 .btn-borrow:hover:not(:disabled) { background: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(139,58,58,.4); }
 .btn-borrow:disabled, .btn-borrow.unavailable { background: #C8C8D0; box-shadow: none; cursor: not-allowed; }
 
-/* ── QR Button ───────────────────────────────────────── */
 .btn-qr {
   display: inline-flex; align-items: center;
   padding: 12px 22px; border-radius: 10px;
@@ -433,7 +493,113 @@ onMounted(() => loadBook());
 
 .btn-spinner { width: 17px; height: 17px; margin-right: 8px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .75s linear infinite; flex-shrink: 0; }
 
-/* ── QR Modal ────────────────────────────────────────── */
+/* ── RELATED BOOKS ── */
+.related-section {
+  margin-top: 2.5rem;
+  background: var(--surface);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 2rem;
+}
+.related-header {
+  margin-bottom: 1.5rem;
+}
+.related-tag {
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: var(--brand);
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+.related-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.related-author {
+  color: var(--brand);
+}
+.related-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+.related-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.related-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+  border-color: var(--brand);
+}
+.related-cover {
+  width: 100%;
+  aspect-ratio: 3/4;
+  overflow: hidden;
+  background: var(--brand-light);
+}
+.related-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.related-card:hover .related-cover img {
+  transform: scale(1.05);
+}
+.related-cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand);
+  font-size: 2rem;
+  opacity: 0.4;
+}
+.related-info {
+  padding: 0.75rem;
+}
+.related-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0 0 0.25rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+.related-year {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+.related-avail {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.related-avail.avail {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.related-avail.unavail {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* ── QR Modal ── */
 .qr-overlay {
   position: fixed; inset: 0; z-index: 1000;
   background: rgba(26,18,14,.55);
@@ -465,18 +631,22 @@ onMounted(() => loadBook());
 }
 .btn-download-qr:hover { background: #5c2d1f; }
 
-/* ── Transitions ─────────────────────────────────────── */
+/* ── Transitions ── */
 .slide-down-enter-active, .slide-down-leave-active { transition: all .3s ease; }
 .slide-down-enter-from, .slide-down-leave-to       { opacity: 0; transform: translateY(-8px); }
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity .2s ease; }
 .modal-fade-enter-from, .modal-fade-leave-to       { opacity: 0; }
 
-/* ── Responsive ──────────────────────────────────────── */
+/* ── Responsive ── */
 @media (max-width: 768px) {
   .detail-grid { grid-template-columns: 1fr; }
   .cover-col   { border-right: none; border-bottom: 1px solid var(--border); padding: 2rem 1.5rem; }
   .info-col    { padding: 1.75rem 1.5rem; }
   .meta-grid   { grid-template-columns: 1fr; }
   .book-title  { font-size: 1.4rem; }
+  .related-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+  .related-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
