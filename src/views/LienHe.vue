@@ -85,7 +85,7 @@
     <div class="map-section">
       <div class="map-placeholder">
         <i class="fas fa-map-marker-alt"></i>
-        <p>123 Đường Sách, Quận 1, TP. Hồ Chí Minh</p>
+        <p>3/2 Ninh Kiều, Cần Thơ</p>
       </div>
     </div>
 
@@ -101,7 +101,7 @@ const sending   = ref(false)
 const form = ref({ name: '', email: '', phone: '', subject: '', message: '' })
 
 const contactInfo = [
-  { icon: 'fas fa-map-marker-alt', label: 'Địa chỉ',      value: '123 Đường Sách, Quận 1, TP. Hồ Chí Minh' },
+  { icon: 'fas fa-map-marker-alt', label: 'Địa chỉ',      value: '3/2 Ninh Kiều, Cần Thơ' },
   { icon: 'fas fa-phone-alt',      label: 'Điện thoại',   value: '(028) 1234 5678' },
   { icon: 'fas fa-envelope',       label: 'Email',         value: 'support@libratech.vn' },
   { icon: 'fas fa-headset',        label: 'Hỗ trợ',       value: 'Thứ 2 – Thứ 7, 8:00 – 17:00' },

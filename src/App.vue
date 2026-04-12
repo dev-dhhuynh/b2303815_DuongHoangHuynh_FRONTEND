@@ -5,6 +5,7 @@
     <main class="main-content">
       <router-view />
     </main>
+    <AiChatbox v-if="!$route.path.startsWith('/admin')" />
   </div>
 </template>
 
@@ -15,6 +16,7 @@ import { useUserStore } from "./stores/userStore";
 import { useAdminStore } from "./stores/adminStore";
 import UserNavbar from "./components/UserNavbar.vue";
 import AdminNavbar from "./components/AdminNavbar.vue";
+import AiChatbox from "./components/AiChatbox.vue";
 
 const route = useRoute();
 const userStore = useUserStore();

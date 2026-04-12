@@ -96,10 +96,10 @@ const values = [
 ]
 
 const team = [
-  { initials: 'LT', name: 'Lê Thanh',      role: 'Quản lý hệ thống' },
-  { initials: 'NH', name: 'Nguyễn Hương',  role: 'Thủ thư trưởng' },
-  { initials: 'TM', name: 'Trần Minh',     role: 'Kỹ thuật viên' },
-  { initials: 'PL', name: 'Phạm Linh',     role: 'Chăm sóc độc giả' },
+  { initials: 'LT', name: 'Duong Huynh',      role: 'Quản lý hệ thống' },
+  { initials: 'NH', name: 'Duong Huynh',  role: 'Thủ thư trưởng' },
+  { initials: 'TM', name: 'Duong Huynh',     role: 'Kỹ thuật viên' },
+  { initials: 'PL', name: 'Duong Huynh',     role: 'Chăm sóc độc giả' },
 ]
 </script>
 

@@ -26,8 +26,9 @@
 
       <!-- Actions -->
       <div class="nav-actions">
-        <button class="icon-btn" title="Tìm kiếm">
-          <i class="fas fa-search"></i>
+        <!-- 🔍 Search toggle button -->
+        <button class="icon-btn" title="Tìm kiếm" @click="toggleSearch">
+          <i :class="searchOpen ? 'fas fa-times' : 'fas fa-search'"></i>
         </button>
 
         <div class="nav-dropdown">
@@ -38,7 +39,6 @@
           </button>
 
           <div class="dropdown-menu">
-            <!-- Chưa đăng nhập -->
             <template v-if="!userStore.isLoggedIn">
               <p class="dropdown-section-label">Chào mừng bạn</p>
               <router-link to="/register" class="dropdown-item">
@@ -53,7 +53,6 @@
               </router-link>
             </template>
 
-            <!-- Đã đăng nhập -->
             <template v-else>
               <p class="dropdown-section-label">{{ userStore.user?.HoLot }} {{ userStore.user?.Ten }}</p>
               <router-link to="/profile" class="dropdown-item">
@@ -72,6 +71,29 @@
       </div>
 
     </div>
+
+    <!-- 🔍 Search bar (trượt xuống khi mở) -->
+    <Transition name="search-slide">
+      <div v-if="searchOpen" class="search-bar-wrapper" @keydown.esc="closeSearch">
+        <div class="search-bar-inner">
+          <i class="fas fa-search search-bar-icon"></i>
+          <input
+            ref="searchInput"
+            v-model="searchQuery"
+            type="text"
+            class="search-bar-input"
+            placeholder="Tìm kiếm tên sách, tác giả, thể loại..."
+            @keydown.enter="doSearch"
+          />
+          <button v-if="searchQuery" class="search-clear-btn" @click="searchQuery = ''">
+            <i class="fas fa-times"></i>
+          </button>
+          <button class="search-submit-btn" @click="doSearch">
+            Tìm
+          </button>
+        </div>
+      </div>
+    </Transition>
   </nav>
 
   <!-- LOGOUT MODAL -->
@@ -108,22 +130,48 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import { useUserStore } from '../stores/userStore'
 import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
 const router = useRouter()
 
+// ── Logout ──
 const showLogoutModal = ref(false)
-
 const showLogoutConfirm = () => { showLogoutModal.value = true }
-const closeLogoutModal = () => { showLogoutModal.value = false }
-
+const closeLogoutModal  = () => { showLogoutModal.value = false }
 const confirmLogout = () => {
   userStore.logout()
   closeLogoutModal()
   router.push('/')
+}
+
+// ── Search ──
+const searchOpen  = ref(false)
+const searchQuery = ref('')
+const searchInput = ref(null)   // template ref tới <input>
+
+const toggleSearch = async () => {
+  searchOpen.value = !searchOpen.value
+  if (searchOpen.value) {
+    await nextTick()             // đợi DOM render xong
+    searchInput.value?.focus()  // focus vào ô input
+  } else {
+    searchQuery.value = ''
+  }
+}
+
+const closeSearch = () => {
+  searchOpen.value  = false
+  searchQuery.value = ''
+}
+
+const doSearch = () => {
+  const q = searchQuery.value.trim()
+  if (!q) return
+  closeSearch()
+  router.push({ path: '/sach', query: { q } })
 }
 </script>
 
@@ -230,11 +278,7 @@ const confirmLogout = () => {
   white-space: nowrap;
   max-width: 200px;
 }
-.btn-account span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+.btn-account span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn-account:hover { background: #5c2d1f; }
 .btn-account .caret { font-size: 0.7rem; opacity: 0.8; flex-shrink: 0; }
 
@@ -289,6 +333,79 @@ const confirmLogout = () => {
 .dropdown-item--danger i { color: #b94a2c; }
 .dropdown-item--danger:hover { background: #fff1ee; color: #8c2d12; }
 .dropdown-divider { height: 1px; background: #ede8e3; margin: 0.4rem 0.5rem; }
+
+/* ── SEARCH BAR ── */
+.search-bar-wrapper {
+  border-top: 1px solid #e8e0d8;
+  background: #fff;
+  padding: 0.75rem 2rem;
+}
+.search-bar-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #f5f1ec;
+  border: 1.5px solid #ddd5cd;
+  border-radius: 6px;
+  padding: 0 0.75rem;
+  transition: border-color 0.2s;
+}
+.search-bar-inner:focus-within {
+  border-color: #7c3d2d;
+  background: #fff;
+}
+.search-bar-icon { color: #9a8a84; font-size: 0.9rem; flex-shrink: 0; }
+.search-bar-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.6rem 0;
+  font-size: 0.9rem;
+  font-family: 'DM Sans', sans-serif;
+  color: #2c2420;
+  outline: none;
+}
+.search-bar-input::placeholder { color: #b0a09a; }
+.search-clear-btn {
+  background: none;
+  border: none;
+  color: #b0a09a;
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 0.8rem;
+  transition: color 0.2s;
+}
+.search-clear-btn:hover { color: #4a3530; }
+.search-submit-btn {
+  background: #7c3d2d;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  flex-shrink: 0;
+  margin: 0.3rem 0;
+}
+.search-submit-btn:hover { background: #5c2d1f; }
+
+/* Transition trượt xuống */
+.search-slide-enter-active,
+.search-slide-leave-active {
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  overflow: hidden;
+  max-height: 80px;
+}
+.search-slide-enter-from,
+.search-slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
 
 /* ── MODAL ── */
 .modal-overlay {
@@ -394,5 +511,6 @@ const confirmLogout = () => {
 @media (max-width: 768px) {
   .nav-links { display: none; }
   .nav-inner { padding: 0.85rem 1rem; }
+  .search-bar-wrapper { padding: 0.65rem 1rem; }
 }
 </style>

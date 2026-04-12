@@ -1,7 +1,6 @@
 <template>
   <div class="home-page">
 
-    
     <!-- HERO -->
     <section class="hero">
       <div class="hero-bg-text">LIBRATECH</div>
@@ -54,10 +53,25 @@
       </div>
     </section>
 
-    <!-- NOTE -->
-    <div class="notice-bar">
-      <i class="fas fa-exclamation-circle"></i>
-      <strong>Lưu ý:</strong> Nếu sách có hư hại trong quá trình mượn sẽ phải bồi thường giá trị tương đương với giá sách mới.
+    <!-- BOOK BANNER (thay thế notice-bar) -->
+    <div class="book-banner-wrapper" v-if="allBooks.length > 0">
+      <div class="book-banner-label">✦ KHO SÁCH</div>
+      <div class="book-banner-track-container">
+        <div class="book-banner-track" ref="trackRef">
+          <div
+            class="book-banner-item"
+            v-for="(book, i) in [...allBooks, ...allBooks]"
+            :key="i"
+            @click="goToBookList"
+          >
+            <img
+              :src="book.HinhBia ? `http://localhost:3000${book.HinhBia}` : 'https://via.placeholder.com/80x110?text=No+Image'"
+              :alt="book.TenSach"
+            />
+            <span class="book-banner-title">{{ book.TenSach }}</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- NEW BOOKS -->
@@ -146,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useUserStore } from "../stores/userStore";
 import BookCarousel from "../components/BookCarousel.vue";
@@ -158,6 +172,8 @@ const router = useRouter();
 
 const newBooks = ref([]);
 const featuredBooks = ref([]);
+const allBooks = ref([]);
+const trackRef = ref(null);
 const stats = ref({
   totalBooks: 0,
   availableBooks: 0,
@@ -166,17 +182,38 @@ const stats = ref({
 });
 const loading = ref(false);
 
+let animationId = null;
+let scrollX = 0;
+
+const startScroll = () => {
+  const track = trackRef.value;
+  if (!track) return;
+
+  const totalWidth = track.scrollWidth / 2;
+
+  const step = () => {
+    scrollX += 0.5;
+    if (scrollX >= totalWidth) scrollX = 0;
+    track.style.transform = `translateX(-${scrollX}px)`;
+    animationId = requestAnimationFrame(step);
+  };
+
+  animationId = requestAnimationFrame(step);
+};
+
 const loadHomeData = async () => {
   try {
     loading.value = true;
-    const allBooks = await sachService.getAll();
+    const books = await sachService.getAll();
 
-    newBooks.value = [...allBooks]
+    allBooks.value = books;
+
+    newBooks.value = [...books]
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 15);
 
-    featuredBooks.value = [...allBooks]
-      .filter((book) => book.NamXuatBan >= 2023 || book.SoQuyen > 5)
+    featuredBooks.value = [...books]
+      .filter((book) => book.isFeatured === true)
       .slice(0, 15);
 
     try {
@@ -189,12 +226,16 @@ const loadHomeData = async () => {
       };
     } catch {
       stats.value = {
-        totalBooks: allBooks.length,
-        availableBooks: allBooks.filter((b) => b.SoQuyen > 0).length,
+        totalBooks: books.length,
+        availableBooks: books.filter((b) => b.SoQuyen > 0).length,
         totalReaders: 0,
         totalBorrows: 0,
       };
     }
+
+    // Bắt đầu scroll sau khi load xong
+    setTimeout(() => startScroll(), 300);
+
   } catch (error) {
     console.error("Error loading home data:", error);
   } finally {
@@ -205,6 +246,9 @@ const loadHomeData = async () => {
 const goToBookList = () => router.push("/sach");
 
 onMounted(() => loadHomeData());
+onBeforeUnmount(() => {
+  if (animationId) cancelAnimationFrame(animationId);
+});
 </script>
 
 <style scoped>
@@ -216,153 +260,6 @@ onMounted(() => loadHomeData());
   background: #faf8f5;
   color: #2c2420;
   min-height: 100vh;
-}
-
-/* ── NAVBAR ── */
-.navbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: rgba(250, 248, 245, 0.95);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid #e8e0d8;
-}
-.nav-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 2rem;
-  gap: 1.5rem;
-}
-.nav-logo {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.45rem;
-  font-weight: 700;
-  color: #2c2420;
-  text-decoration: none;
-  letter-spacing: 0.02em;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-.nav-logo-icon { color: #7c3d2d; font-size: 1.1rem; }
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex: 1;
-  justify-content: center;
-}
-.nav-link {
-  font-size: 0.82rem;
-  font-weight: 400;
-  color: #6b5c55;
-  text-decoration: none;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 0.4rem 0.75rem;
-  border-radius: 4px;
-  transition: color 0.2s, background 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-.nav-link i { font-size: 0.75rem; opacity: 0.7; }
-.nav-link:hover,
-.nav-link.router-link-active { color: #7c3d2d; background: rgba(124, 61, 45, 0.06); }
-.nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
-}
-.icon-btn {
-  background: none;
-  border: none;
-  color: #6b5c55;
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.45rem 0.5rem;
-  border-radius: 4px;
-  transition: color 0.2s, background 0.2s;
-}
-.icon-btn:hover { color: #2c2420; background: rgba(44, 36, 32, 0.06); }
-
-/* Dropdown */
-.nav-dropdown {
-  position: relative;
-}
-.btn-account {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  background: #7c3d2d;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.45rem 1rem;
-  font-size: 0.83rem;
-  font-weight: 500;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  transition: background 0.2s;
-}
-.btn-account:hover { background: #5c2d1f; }
-.btn-account .caret { font-size: 0.7rem; opacity: 0.8; }
-.dropdown-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: #fff;
-  border: 1px solid #e8e0d8;
-  border-radius: 8px;
-  min-width: 180px;
-  box-shadow: 0 8px 24px rgba(44, 36, 32, 0.12);
-  padding: 0.5rem;
-  z-index: 200;
-}
-.nav-dropdown:hover .dropdown-menu,
-.nav-dropdown:focus-within .dropdown-menu {
-  display: block;
-}
-.dropdown-section-label {
-  font-size: 0.75rem;
-  color: #b0a09a;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 0.4rem 0.75rem 0.25rem;
-  margin: 0;
-}
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.87rem;
-  color: #4a3530;
-  text-decoration: none;
-  border-radius: 5px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
-  transition: background 0.15s, color 0.15s;
-  text-align: left;
-}
-.dropdown-item i { font-size: 0.8rem; color: #9a8a84; width: 14px; }
-.dropdown-item:hover { background: #f5f1ec; color: #2c2420; }
-.dropdown-item--danger { color: #b94a2c; }
-.dropdown-item--danger:hover { background: #fff1ee; color: #8c2d12; }
-.dropdown-divider {
-  height: 1px;
-  background: #ede8e3;
-  margin: 0.4rem 0.5rem;
 }
 
 /* ── HERO ── */
@@ -442,9 +339,7 @@ onMounted(() => loadHomeData());
 }
 .btn-ghost-hero:hover { border-color: #7c3d2d; color: #7c3d2d; }
 
-.hero-image {
-  position: relative;
-}
+.hero-image { position: relative; }
 .hero-image img {
   width: 100%;
   height: 420px;
@@ -520,20 +415,60 @@ onMounted(() => loadHomeData());
   margin-top: 0.5rem;
 }
 
-/* ── NOTICE ── */
-.notice-bar {
-  max-width: 1280px;
-  margin: 2.5rem auto 0;
-  padding: 1rem 2rem;
-  background: #fff8f6;
-  border: 1px solid #f0c4b8;
-  border-left: 4px solid #c0522a;
-  border-radius: 6px;
-  color: #7c3d2d;
-  font-size: 0.88rem;
+/* ── BOOK BANNER ── */
+.book-banner-wrapper {
+  background: #2c2420;
+  padding: 1rem 0;
+  margin-top: 2.5rem;
+  overflow: hidden;
+  position: relative;
+}
+.book-banner-label {
+  text-align: center;
+  font-size: 0.7rem;
+  letter-spacing: 0.25em;
+  color: #e8b89a;
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+.book-banner-track-container {
+  overflow: hidden;
+  width: 100%;
+}
+.book-banner-track {
   display: flex;
+  gap: 1.5rem;
+  width: max-content;
+  will-change: transform;
+}
+.book-banner-item {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+.book-banner-item:hover {
+  transform: translateY(-4px);
+}
+.book-banner-item img {
+  width: 70px;
+  height: 95px;
+  object-fit: cover;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.book-banner-title {
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.6);
+  text-align: center;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── BOOK SECTIONS ── */
@@ -601,9 +536,7 @@ onMounted(() => loadHomeData());
   margin: 0 auto 3.5rem;
   text-align: center;
 }
-.section-tag.light {
-  color: #e8b89a;
-}
+.section-tag.light { color: #e8b89a; }
 .features-title {
   font-family: 'Playfair Display', serif;
   font-size: 2.4rem;
@@ -688,7 +621,6 @@ onMounted(() => loadHomeData());
   .features-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 640px) {
-  .nav-links { display: none; }
   .hero-title { font-size: 2.2rem; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .features-grid { grid-template-columns: 1fr; }

@@ -110,7 +110,6 @@
                 <p class="desc-text">{{ book.MoTa }}</p>
               </div>
 
-              <!-- Divider -->
               <div class="action-divider"></div>
 
               <!-- Borrow Message -->
@@ -138,6 +137,11 @@
                   {{ borrowButtonText }}
                 </button>
 
+                <!-- ── NÚT QR ── -->
+                <button class="btn-qr" @click="showQR = true" title="Xem mã QR">
+                  <i class="fas fa-qrcode me-2"></i>Mã QR
+                </button>
+
                 <router-link to="/sach" class="btn-secondary-action">
                   <i class="fas fa-arrow-left me-2"></i>Quay lại
                 </router-link>
@@ -148,12 +152,42 @@
         </div>
       </div>
     </div>
+
+    <!-- ── QR MODAL ── -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showQR" class="qr-overlay" @click.self="showQR = false">
+          <div class="qr-modal">
+            <div class="qr-modal-header">
+              <div>
+                <p class="qr-tag">✦ MÃ QR SÁCH</p>
+                <h3 class="qr-title">{{ book?.TenSach }}</h3>
+              </div>
+              <button class="qr-close" @click="showQR = false">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <div class="qr-body">
+              <canvas ref="qrCanvas" class="qr-canvas"></canvas>
+              <p class="qr-hint">Quét mã để mở trang chi tiết sách</p>
+              <p class="qr-url">{{ bookUrl }}</p>
+            </div>
+            <div class="qr-footer">
+              <button class="btn-download-qr" @click="downloadQR">
+                <i class="fas fa-download me-2"></i>Tải xuống QR
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch, nextTick } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import QRCode from "qrcode";
 import sachService from "../services/sachService";
 import muonService from "../services/muonService";
 import { useUserStore } from "../stores/userStore";
@@ -168,6 +202,33 @@ const loadingBorrow  = ref(false);
 const error          = ref("");
 const borrowMessage  = ref("");
 const borrowMsgType  = ref("");
+const showQR         = ref(false);
+const qrCanvas       = ref(null);
+
+const bookUrl = computed(() =>
+  `${window.location.origin}/sach/${route.params.id}`
+);
+
+// Vẽ QR lên canvas khi modal mở
+watch(showQR, async (val) => {
+  if (!val) return;
+  await nextTick();
+  if (qrCanvas.value) {
+    QRCode.toCanvas(qrCanvas.value, bookUrl.value, {
+      width: 220,
+      margin: 2,
+      color: { dark: '#2c2420', light: '#faf8f5' }
+    });
+  }
+});
+
+const downloadQR = () => {
+  if (!qrCanvas.value) return;
+  const link = document.createElement('a');
+  link.download = `QR_${book.value?.TenSach || 'sach'}.png`;
+  link.href = qrCanvas.value.toDataURL('image/png');
+  link.click();
+};
 
 const borrowMsgIcon = computed(() => ({
   success: "fas fa-check-circle",
@@ -265,14 +326,12 @@ onMounted(() => loadBook());
   display: flex; align-items: center; justify-content: center; font-size: 1.8rem;
 }
 .state-icon.error { background: var(--danger-bg); color: var(--danger); }
-
 .spinner-ring {
   width: 44px; height: 44px; margin: 0 auto;
   border: 3px solid var(--border); border-top-color: var(--brand);
   border-radius: 50%; animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .btn-back-link {
   display: inline-flex; align-items: center;
   padding: 9px 20px; border-radius: 8px;
@@ -283,14 +342,8 @@ onMounted(() => loadBook());
 .btn-back-link:hover { background: var(--brand-dark); }
 
 /* ── Breadcrumb ──────────────────────────────────────── */
-.breadcrumb-wrap {
-  display: flex; align-items: center; gap: 8px;
-  font-size: .85rem;
-}
-.breadcrumb-link {
-  color: var(--brand); text-decoration: none; font-weight: 500;
-  transition: color .2s;
-}
+.breadcrumb-wrap { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+.breadcrumb-link { color: var(--brand); text-decoration: none; font-weight: 500; transition: color .2s; }
 .breadcrumb-link:hover { color: var(--brand-dark); }
 .breadcrumb-sep  { color: var(--text-muted); font-size: .7rem; }
 .breadcrumb-current { color: var(--text-muted); }
@@ -298,14 +351,9 @@ onMounted(() => loadBook());
 /* ── Detail Card ─────────────────────────────────────── */
 .detail-card {
   background: var(--surface); border-radius: 20px;
-  border: 1px solid var(--border); box-shadow: var(--shadow);
-  overflow: hidden;
+  border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden;
 }
-
-.detail-grid {
-  display: grid; grid-template-columns: 280px 1fr;
-  gap: 0;
-}
+.detail-grid { display: grid; grid-template-columns: 280px 1fr; gap: 0; }
 
 /* ── Cover Column ────────────────────────────────────── */
 .cover-col {
@@ -314,139 +362,121 @@ onMounted(() => loadBook());
   display: flex; flex-direction: column; align-items: center; gap: 1.25rem;
   border-right: 1px solid var(--border);
 }
-
-.cover-wrap {
-  width: 100%; max-width: 220px;
-  border-radius: 10px; overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0,0,0,.15);
-}
-
-.book-cover {
-  width: 100%; display: block;
-  object-fit: cover; aspect-ratio: 3/4;
-}
-
+.cover-wrap { width: 100%; max-width: 220px; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 30px rgba(0,0,0,.15); }
+.book-cover { width: 100%; display: block; object-fit: cover; aspect-ratio: 3/4; }
 .cover-placeholder {
-  aspect-ratio: 3/4; width: 100%;
-  background: #F0EAE0;
-  border: 2px dashed #D5C8B8;
-  border-radius: 10px;
+  aspect-ratio: 3/4; width: 100%; background: #F0EAE0;
+  border: 2px dashed #D5C8B8; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 10px; color: #A0917E;
 }
 .cover-placeholder i { font-size: 3.5rem; }
 .cover-placeholder span { font-size: .85rem; }
-
 .avail-badge {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 7px 16px; border-radius: 20px;
-  font-size: .82rem; font-weight: 600;
+  padding: 7px 16px; border-radius: 20px; font-size: .82rem; font-weight: 600;
 }
 .avail-badge.available   { background: var(--success-bg); color: var(--success); }
 .avail-badge.unavailable { background: var(--danger-bg);  color: var(--danger);  }
 
 /* ── Info Column ─────────────────────────────────────── */
 .info-col { padding: 2.5rem; }
-
-.book-title {
-  font-size: 1.75rem; font-weight: 800;
-  color: var(--text); letter-spacing: -.5px;
-  line-height: 1.3; margin-bottom: 1.75rem;
-}
+.book-title { font-size: 1.75rem; font-weight: 800; color: var(--text); letter-spacing: -.5px; line-height: 1.3; margin-bottom: 1.75rem; }
 
 /* ── Meta Grid ───────────────────────────────────────── */
-.meta-grid {
-  display: grid; grid-template-columns: repeat(2, 1fr);
-  gap: .85rem; margin-bottom: 1.75rem;
-}
-
-.meta-item {
-  display: flex; align-items: flex-start; gap: 12px;
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px 14px;
-}
-
-.meta-icon {
-  width: 34px; height: 34px; flex-shrink: 0;
-  background: var(--brand-light); color: var(--brand);
-  border-radius: 8px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: .85rem;
-}
-
+.meta-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .85rem; margin-bottom: 1.75rem; }
+.meta-item { display: flex; align-items: flex-start; gap: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.meta-icon { width: 34px; height: 34px; flex-shrink: 0; background: var(--brand-light); color: var(--brand); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: .85rem; }
 .meta-label { font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
 .meta-value { font-size: .9rem; font-weight: 600; color: var(--text); }
 
 /* ── Description ─────────────────────────────────────── */
-.description-box {
-  background: var(--bg); border: 1px solid var(--border);
-  border-left: 4px solid var(--brand);
-  border-radius: 0 10px 10px 0;
-  padding: 1rem 1.25rem; margin-bottom: 1.5rem;
-}
-.desc-header {
-  font-size: .78rem; font-weight: 700; color: var(--brand);
-  text-transform: uppercase; letter-spacing: .5px; margin-bottom: .5rem;
-}
+.description-box { background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--brand); border-radius: 0 10px 10px 0; padding: 1rem 1.25rem; margin-bottom: 1.5rem; }
+.desc-header { font-size: .78rem; font-weight: 700; color: var(--brand); text-transform: uppercase; letter-spacing: .5px; margin-bottom: .5rem; }
 .desc-text { font-size: .9rem; color: var(--text-muted); line-height: 1.7; margin: 0; }
 
 /* ── Actions ─────────────────────────────────────────── */
 .action-divider { border-top: 1px solid var(--border); margin-bottom: 1.25rem; }
-
-.borrow-message {
-  padding: 10px 14px; border-radius: 8px;
-  font-size: .88rem; margin-bottom: 1.1rem;
-  display: flex; align-items: center;
-}
+.borrow-message { padding: 10px 14px; border-radius: 8px; font-size: .88rem; margin-bottom: 1.1rem; display: flex; align-items: center; }
 .borrow-message.success { background: var(--success-bg); color: #1E8449; border: 1px solid #A9DFBF; }
 .borrow-message.warning { background: var(--warning-bg); color: #856404; border: 1px solid #FDEBD0; }
 .borrow-message.danger  { background: var(--danger-bg);  color: #922B21; border: 1px solid #F5B7B1; }
-
 .action-row { display: flex; align-items: center; gap: .85rem; flex-wrap: wrap; }
 
 .btn-borrow {
   display: inline-flex; align-items: center;
   padding: 12px 28px; border-radius: 10px; border: none;
   background: var(--brand); color: #fff;
-  font-size: .95rem; font-weight: 700;
-  cursor: pointer; text-decoration: none;
-  box-shadow: 0 4px 14px rgba(139,58,58,.3);
+  font-size: .95rem; font-weight: 700; cursor: pointer; text-decoration: none;
+  box-shadow: 0 4px 14px rgba(139,58,58,.3); transition: all .2s;
+}
+.btn-borrow:hover:not(:disabled) { background: var(--brand-dark); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(139,58,58,.4); }
+.btn-borrow:disabled, .btn-borrow.unavailable { background: #C8C8D0; box-shadow: none; cursor: not-allowed; }
+
+/* ── QR Button ───────────────────────────────────────── */
+.btn-qr {
+  display: inline-flex; align-items: center;
+  padding: 12px 22px; border-radius: 10px;
+  border: 1.5px solid var(--brand); background: var(--brand-light);
+  color: var(--brand); font-size: .9rem; font-weight: 600; cursor: pointer;
   transition: all .2s;
 }
-.btn-borrow:hover:not(:disabled) {
-  background: var(--brand-dark); transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(139,58,58,.4);
-}
-.btn-borrow:disabled, .btn-borrow.unavailable {
-  background: #C8C8D0; box-shadow: none; cursor: not-allowed;
-}
+.btn-qr:hover { background: var(--brand); color: #fff; }
 
 .btn-secondary-action {
   display: inline-flex; align-items: center;
   padding: 12px 22px; border-radius: 10px;
-  border: 1.5px solid var(--border);
-  background: var(--surface); color: var(--text-muted);
-  font-size: .9rem; font-weight: 600; text-decoration: none;
-  transition: all .2s;
+  border: 1.5px solid var(--border); background: var(--surface); color: var(--text-muted);
+  font-size: .9rem; font-weight: 600; text-decoration: none; transition: all .2s;
 }
 .btn-secondary-action:hover { background: var(--bg); color: var(--text); border-color: #C8C8D0; }
 
-.btn-spinner {
-  width: 17px; height: 17px; margin-right: 8px;
-  border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
-  border-radius: 50%; animation: spin .75s linear infinite; flex-shrink: 0;
+.btn-spinner { width: 17px; height: 17px; margin-right: 8px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .75s linear infinite; flex-shrink: 0; }
+
+/* ── QR Modal ────────────────────────────────────────── */
+.qr-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(26,18,14,.55);
+  display: flex; align-items: center; justify-content: center; padding: 1.5rem;
 }
+.qr-modal {
+  background: #faf8f5; border-radius: 12px;
+  border: 1px solid #e8e0d8; width: 100%; max-width: 340px;
+  box-shadow: 0 16px 48px rgba(44,36,32,.2);
+}
+.qr-modal-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid #e8e0d8;
+}
+.qr-tag { font-size: .7rem; letter-spacing: .18em; color: #7c3d2d; font-weight: 500; margin: 0 0 .2rem; }
+.qr-title { font-size: 1rem; font-weight: 700; color: #1a120e; margin: 0; line-height: 1.4; max-width: 220px; }
+.qr-close { background: none; border: none; color: #9a8a84; font-size: 1rem; cursor: pointer; padding: .25rem; transition: color .2s; }
+.qr-close:hover { color: #2c2420; }
+.qr-body { padding: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: .75rem; }
+.qr-canvas { border-radius: 8px; border: 1px solid #e8e0d8; }
+.qr-hint { font-size: .8rem; color: #9a8a84; margin: 0; }
+.qr-url { font-size: .72rem; color: #b0a09a; margin: 0; word-break: break-all; text-align: center; }
+.qr-footer { padding: .75rem 1.5rem 1.25rem; display: flex; justify-content: center; }
+.btn-download-qr {
+  display: inline-flex; align-items: center;
+  padding: 9px 22px; border-radius: 8px; border: none;
+  background: #7c3d2d; color: #fff;
+  font-size: .85rem; font-weight: 600; cursor: pointer; transition: background .2s;
+}
+.btn-download-qr:hover { background: #5c2d1f; }
 
 /* ── Transitions ─────────────────────────────────────── */
 .slide-down-enter-active, .slide-down-leave-active { transition: all .3s ease; }
 .slide-down-enter-from, .slide-down-leave-to       { opacity: 0; transform: translateY(-8px); }
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity .2s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to       { opacity: 0; }
 
 /* ── Responsive ──────────────────────────────────────── */
 @media (max-width: 768px) {
-  .detail-grid   { grid-template-columns: 1fr; }
-  .cover-col     { border-right: none; border-bottom: 1px solid var(--border); padding: 2rem 1.5rem; }
-  .info-col      { padding: 1.75rem 1.5rem; }
-  .meta-grid     { grid-template-columns: 1fr; }
-  .book-title    { font-size: 1.4rem; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .cover-col   { border-right: none; border-bottom: 1px solid var(--border); padding: 2rem 1.5rem; }
+  .info-col    { padding: 1.75rem 1.5rem; }
+  .meta-grid   { grid-template-columns: 1fr; }
+  .book-title  { font-size: 1.4rem; }
 }
 </style>

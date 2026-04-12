@@ -21,7 +21,6 @@
               type="text"
               class="search-input"
               placeholder="Tìm tên sách, tác giả..."
-              @input="onSearchInput"
               @focus="searchFocused = true"
               @blur="searchFocused = false"
               @keyup.escape="clearSearch"
@@ -89,15 +88,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
 import BookCard from "../components/BookCard.vue";
 import sachService from "../services/sachService";
 import { useUserStore } from "../stores/userStore";
 
-const userStore   = useUserStore();
-const books       = ref([]);
-const loading     = ref(true);
-const searchQuery = ref("");
+const userStore     = useUserStore();
+const route         = useRoute();
+const books         = ref([]);
+const loading       = ref(true);
+const searchQuery   = ref("");
 const searchFocused = ref(false);
 
 const loadBooks = async () => {
@@ -111,19 +112,7 @@ const loadBooks = async () => {
   }
 };
 
-const onSearchInput = async () => {
-  if (!searchQuery.value.trim()) { loadBooks(); return; }
-  try {
-    loading.value = true;
-    books.value = await sachService.search(searchQuery.value);
-  } catch (error) {
-    console.error("Error searching books:", error);
-  } finally {
-    loading.value = false;
-  }
-};
-
-const clearSearch = () => { searchQuery.value = ""; loadBooks(); };
+const clearSearch = () => { searchQuery.value = ""; };
 
 const handleBookBorrowed = (bookId) => {
   const idx = books.value.findIndex((b) => b._id === bookId);
@@ -131,8 +120,8 @@ const handleBookBorrowed = (bookId) => {
 };
 
 const filteredBooks = computed(() => {
-  if (!searchQuery.value.trim()) return books.value;
-  const q = searchQuery.value.toLowerCase();
+  const q = searchQuery.value.trim().toLowerCase();
+  if (!q) return books.value;
   return books.value.filter((b) =>
     b.TenSach?.toLowerCase().includes(q) ||
     b.TacGia?.toLowerCase().includes(q) ||
@@ -145,11 +134,15 @@ const availableBooksCount = computed(() =>
   books.value.filter((b) => b.SoQuyen > 0).length
 );
 
+// Đọc ?q= từ navbar search
+watch(() => route.query.q, (q) => {
+  searchQuery.value = q || "";
+}, { immediate: true });
+
 onMounted(() => loadBooks());
 </script>
 
 <style scoped>
-/* ── Tokens ─────────────────────────────────────────── */
 .book-list-page {
   --brand:       #8B3A3A;
   --brand-dark:  #6B2C2C;
@@ -168,7 +161,7 @@ onMounted(() => loadBooks());
   min-height: 100vh;
 }
 
-/* ── Page Header ─────────────────────────────────────── */
+/* ── Page Header ── */
 .page-header {
   display: flex; align-items: center; justify-content: space-between;
   gap: 1.5rem; flex-wrap: wrap;
@@ -176,7 +169,6 @@ onMounted(() => loadBooks());
   border-bottom: 2px solid var(--border);
 }
 .header-left { display: flex; align-items: center; gap: 1rem; }
-
 .header-icon {
   width: 52px; height: 52px; flex-shrink: 0;
   background: var(--brand); color: #fff;
@@ -188,11 +180,10 @@ onMounted(() => loadBooks());
 .page-title   { font-size: 1.75rem; font-weight: 700; color: var(--text); letter-spacing: -.5px; }
 .page-subtitle { color: var(--text-muted); font-size: .9rem; }
 
-/* ── Search ──────────────────────────────────────────── */
+/* ── Search ── */
 .search-wrap { flex-shrink: 0; }
-
 .search-box {
-  display: flex; align-items: center; gap: 0;
+  display: flex; align-items: center;
   background: var(--surface);
   border: 1.5px solid var(--border);
   border-radius: 50px;
@@ -204,16 +195,14 @@ onMounted(() => loadBooks());
   border-color: var(--brand);
   box-shadow: 0 0 0 3px rgba(139,58,58,.1);
 }
-.search-icon  { color: var(--text-muted); font-size: .85rem; flex-shrink: 0; transition: color .2s; }
+.search-icon { color: var(--text-muted); font-size: .85rem; flex-shrink: 0; transition: color .2s; }
 .search-box.active .search-icon { color: var(--brand); }
-
 .search-input {
   flex: 1; border: none; background: transparent;
   padding: 10px 10px; font-size: .9rem; color: var(--text);
   outline: none;
 }
 .search-input::placeholder { color: #C0C0C8; }
-
 .search-clear {
   background: none; border: none; padding: 4px;
   color: var(--text-muted); cursor: pointer;
@@ -222,10 +211,8 @@ onMounted(() => loadBooks());
 }
 .search-clear:hover { color: var(--brand); background: var(--brand-light); }
 
-/* ── Stats Bar ───────────────────────────────────────── */
-.stats-bar {
-  display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
-}
+/* ── Stats Bar ── */
+.stats-bar { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .stat-chip {
   display: inline-flex; align-items: center; gap: 7px;
   background: var(--surface); border: 1px solid var(--border);
@@ -239,7 +226,7 @@ onMounted(() => loadBooks());
 .stat-chip.search { background: var(--brand-light); border-color: #F5C6C6; color: var(--brand); }
 .stat-chip.search strong { color: var(--brand); }
 
-/* ── Loading / Empty ─────────────────────────────────── */
+/* ── Loading / Empty ── */
 .state-wrap {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow);
@@ -251,7 +238,6 @@ onMounted(() => loadBooks());
   border-radius: 50%; animation: spin .8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 .empty-icon {
   width: 72px; height: 72px; margin: 0 auto;
   background: var(--brand-light); color: var(--brand);
@@ -268,13 +254,12 @@ onMounted(() => loadBooks());
 }
 .btn-reset:hover { background: var(--brand-dark); }
 
-/* ── Book Grid ───────────────────────────────────────── */
+/* ── Book Grid ── */
 .book-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
 }
-
 @media (max-width: 1200px) { .book-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 900px)  { .book-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 576px)  {

@@ -518,18 +518,20 @@ onMounted(() => {
 /* ── Modal Overlay ──────────────────────────────────── */
 .modal-overlay {
   position: fixed; inset: 0; z-index: 9999;
-  background: rgba(20, 20, 40, 0.55);
-  backdrop-filter: blur(4px);
+  background: rgba(10, 8, 8, 0.75);   /* ← đậm hơn */
+  backdrop-filter: blur(6px);          /* ← blur mạnh hơn */
   display: flex; align-items: center; justify-content: center;
   padding: 1rem;
 }
 
 .confirm-modal {
-  background: var(--surface);
+  background: #FFFFFF;                 /* ← trắng đục, không rgba */
   border-radius: 16px;
   width: 100%; max-width: 460px;
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.35);  /* ← shadow đậm hơn */
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #D8D8E8; 
 }
 
 .confirm-modal-header {
@@ -538,8 +540,14 @@ onMounted(() => {
   color: #fff;
   position: relative;
 }
-.confirm-modal-header.approve { background: var(--success); }
-.confirm-modal-header.reject  { background: var(--danger);  }
+.confirm-modal-header.approve {
+  background: #7c3d2d;        /* ← đỏ nâu hợp theme, thay vì var(--success) */
+  color: #fff;
+}
+.confirm-modal-header.reject {
+  background: #922B21;
+  color: #fff;
+}
 
 .modal-header-icon {
   width: 36px; height: 36px;
@@ -564,8 +572,8 @@ onMounted(() => {
 .confirm-message { color: var(--text); margin-bottom: 1rem; }
 
 .request-info-card {
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: #F0EEE8;                 /* ← đậm hơn var(--bg) */
+  border: 1px solid #D8D8E8;
   border-radius: 10px;
   padding: 1rem;
   display: flex; flex-direction: column; gap: 0.5rem;
@@ -586,8 +594,10 @@ onMounted(() => {
 .confirm-modal-footer {
   display: flex; justify-content: flex-end; gap: 0.75rem;
   padding: 1rem 1.5rem;
-  border-top: 1px solid var(--border);
-  background: #FAFAFA;
+  border-top: 1px solid #D8D8E8;
+  background: #EDEBE7;                 /* ← xám ấm thay vì #FAFAFA */
+  border-radius: 0 0 16px 16px;
+  flex-shrink: 0;
 }
 
 .btn-cancel {
@@ -605,10 +615,28 @@ onMounted(() => {
   display: flex; align-items: center;
   color: #fff; transition: all 0.2s;
 }
-.btn-confirm.approve { background: var(--success); }
-.btn-confirm.approve:hover:not(:disabled) { background: #229954; box-shadow: 0 4px 12px rgba(39,174,96,.4); }
-.btn-confirm.reject  { background: var(--danger); }
-.btn-confirm.reject:hover:not(:disabled)  { background: #C0392B; box-shadow: 0 4px 12px rgba(231,76,60,.4); }
+.btn-confirm.approve {
+  background: #F0EEE8;        /* ← nền xám ấm */
+  color: #1A1A2E;             /* ← chữ đen */
+  border: 1.5px solid #D8D8E8;
+}
+.btn-confirm.approve:hover:not(:disabled) {
+  background: #7c3d2d;        /* ← nền đỏ nâu khi hover */
+  color: #fff;
+  border-color: #7c3d2d;
+  box-shadow: 0 4px 12px rgba(124,61,45,.35);
+}
+.btn-confirm.reject {
+  background: #F0EEE8;
+  color: #1A1A2E;
+  border: 1.5px solid #D8D8E8;
+}
+.btn-confirm.reject:hover:not(:disabled) {
+  background: #7c3d2d;
+  color: #fff;
+  border-color: #7c3d2d;
+  box-shadow: 0 4px 12px rgba(124,61,45,.35);
+}
 .btn-confirm:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ── Modal Transition ───────────────────────────────── */
