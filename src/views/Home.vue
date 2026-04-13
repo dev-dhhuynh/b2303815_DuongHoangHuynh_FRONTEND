@@ -53,7 +53,7 @@
       </div>
     </section>
 
-    <!-- BOOK BANNER (thay thế notice-bar) -->
+    <!-- BOOK BANNER -->
     <div class="book-banner-wrapper" v-if="allBooks.length > 0">
       <div class="book-banner-label">✦ KHO SÁCH</div>
       <div class="book-banner-track-container">
@@ -95,7 +95,7 @@
 
     <!-- FEATURED BOOKS -->
     <section class="book-section featured-bg">
-      <div class="section-head">
+      <div class="section-head center">
         <div>
           <p class="section-tag">✦ NỔI BẬT</p>
           <h2 class="section-title">Sách Được Yêu Thích</h2>
@@ -212,6 +212,7 @@ const loadHomeData = async () => {
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 15);
 
+    // Chỉ lấy sách có isFeatured === true
     featuredBooks.value = [...books]
       .filter((book) => book.isFeatured === true)
       .slice(0, 15);
@@ -233,7 +234,6 @@ const loadHomeData = async () => {
       };
     }
 
-    // Bắt đầu scroll sau khi load xong
     setTimeout(() => startScroll(), 300);
 
   } catch (error) {
@@ -450,9 +450,7 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   transition: transform 0.2s;
 }
-.book-banner-item:hover {
-  transform: translateY(-4px);
-}
+.book-banner-item:hover { transform: translateY(-4px); }
 .book-banner-item img {
   width: 70px;
   height: 95px;
@@ -491,6 +489,17 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 1rem;
 }
+
+/* ✅ Căn giữa cho phần Sách Được Yêu Thích */
+.section-head.center {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.section-head.center .btn-viewmore {
+  margin-top: 0.5rem;
+}
+
 .section-tag {
   font-size: 0.75rem;
   letter-spacing: 0.2em;

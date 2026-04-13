@@ -194,8 +194,14 @@
                     :stroke-dasharray="`${seg.dash} ${seg.gap}`"
                     :stroke-dashoffset="seg.offset"
                   />
-                  <text x="60" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#1a120e" style="transform:none">{{ stats.approved + stats.returned + stats.pending }}</text>
-                  <text x="60" y="70" text-anchor="middle" font-size="7" fill="#9a8a84" style="transform:none">tổng</text>
+                <text x="60" y="56" text-anchor="middle" font-size="13" font-weight="700" fill="#1a120e" 
+                  style="transform: rotate(90deg); transform-origin: 60px 56px;">
+                  {{ stats.approved + stats.returned + stats.pending }}
+                </text>
+                <text x="60" y="70" text-anchor="middle" font-size="7" fill="#9a8a84" 
+                  style="transform: rotate(90deg); transform-origin: 60px 70px;">
+                  tổng
+                </text>
                 </svg>
               </div>
               <div class="donut-legend">
