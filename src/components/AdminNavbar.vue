@@ -40,7 +40,7 @@
           <Transition name="dropdown-fade">
             <div v-if="bellOpen" class="bell-dropdown">
               <div class="bell-dropdown-header">
-                <span class="bell-dropdown-title">🔔 Sách Quá Hạn</span>
+                <span class="bell-dropdown-title">🔔 Thông báo</span>
                 <span class="bell-dropdown-count" v-if="overdueList.length > 0">
                   {{ overdueList.length }} trường hợp
                 </span>
@@ -49,7 +49,7 @@
               <!-- Không có quá hạn -->
               <div v-if="overdueList.length === 0" class="bell-empty">
                 <i class="fas fa-check-circle"></i>
-                <p>Không có sách quá hạn!</p>
+                <p>Không có thông báo!</p>
               </div>
 
               <!-- Danh sách quá hạn -->

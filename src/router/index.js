@@ -17,19 +17,20 @@ import AdminPending from "../views/admin/AdminPending.vue";
 import AdminApproved from "../views/admin/AdminApproved.vue";
 import AdminManageSach from "../views/admin/AdminManageSach.vue";
 import AdminBorrowAll from "../views/admin/AdminBorrowAll.vue";
+import AdminManageNXB from "../views/admin/AdminManageNXB.vue"; // 👈 THÊM
 
 const routes = [
-  { path: "/",            component: Home },
-  { path: "/sach",        component: SachList },
-  { path: "/sach/:id",    component: SachDetail },
-  { path: "/login",       component: LoginUser },
-  { path: "/register",    component: RegisterUser },
-  { path: "/my-borrow",   component: UserBorrowList },
-  { path: "/lich-su-muon",component: UserBorrowList },
-  { path: "/profile",     component: UserProfile },
-  { path: "/the-loai",    component: TheLoai },
-  { path: "/about",       component: About },
-  { path: "/lien-he",     component: LienHe },
+  { path: "/",             component: Home },
+  { path: "/sach",         component: SachList },
+  { path: "/sach/:id",     component: SachDetail },
+  { path: "/login",        component: LoginUser },
+  { path: "/register",     component: RegisterUser },
+  { path: "/my-borrow",    component: UserBorrowList },
+  { path: "/lich-su-muon", component: UserBorrowList },
+  { path: "/profile",      component: UserProfile },
+  { path: "/the-loai",     component: TheLoai },
+  { path: "/about",        component: About },
+  { path: "/lien-he",      component: LienHe },
 
   { path: "/admin/login",        component: AdminLogin },
   { path: "/admin/dashboard",    component: AdminDashboard },
@@ -37,6 +38,7 @@ const routes = [
   { path: "/admin/approved",     component: AdminApproved },
   { path: "/admin/manage-sach",  component: AdminManageSach },
   { path: "/admin/borrow-all",   component: AdminBorrowAll },
+  { path: "/admin/manage-nxb",   component: AdminManageNXB }, // 👈 THÊM
 ];
 
 const router = createRouter({

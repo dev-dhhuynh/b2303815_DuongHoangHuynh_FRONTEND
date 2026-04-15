@@ -128,6 +128,17 @@
             <p class="action-desc">Thêm, chỉnh sửa, xoá sách trong hệ thống</p>
             <span class="action-cta">Quản lý <i class="fas fa-arrow-right"></i></span>
           </router-link>
+          
+          <router-link to="/admin/manage-nxb" class="action-card">
+            <div class="action-card-top">
+              <div class="action-icon action-icon--purple">
+               <i class="fas fa-building"></i>
+              </div>
+            </div>
+            <h4 class="action-title">Quản Lý NXB</h4>
+            <p class="action-desc">Thêm, chỉnh sửa, xoá nhà xuất bản trong hệ thống</p>
+            <span class="action-cta">Quản lý <i class="fas fa-arrow-right"></i></span>
+          </router-link>
 
           <router-link to="/admin/approved" class="action-card">
             <div class="action-card-top">
@@ -271,6 +282,7 @@ import adminService from "../../services/adminService";
 import statsService from "../../services/statsService";
 import api from "../../services/api";
 
+const isBookMenuOpen = ref(false); // menu quản lý
 const adminStore = useAdminStore();
 const loading      = ref(false);
 const loadingChart = ref(false);
@@ -752,4 +764,5 @@ onMounted(() => {
   .sec-stat       { flex: 0 0 50%; border-bottom: 1px solid #ece8e3; padding: 0.75rem; }
   .top-info       { flex: 0 0 100px; }
 }
+
 </style>

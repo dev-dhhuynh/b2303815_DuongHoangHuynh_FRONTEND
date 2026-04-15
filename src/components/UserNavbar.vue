@@ -34,7 +34,7 @@
               </div>
               <div v-if="overdueBooks.length === 0" class="bell-empty">
                 <i class="fas fa-check-circle"></i>
-                <p>Không có sách quá hạn!</p>
+                <p>Không có thông báo!</p>
               </div>
               <div v-else class="bell-list">
                 <div v-for="item in overdueBooks" :key="item._id" class="bell-item" @click="goToLichSu">

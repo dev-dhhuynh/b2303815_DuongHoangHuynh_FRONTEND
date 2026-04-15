@@ -35,12 +35,19 @@
           <p class="section-tag" style="margin-bottom:0.25rem">✦ GỬI TIN NHẮN</p>
           <h2 class="form-title">Nhắn Gửi Chúng Tôi</h2>
 
+          <!-- Thành công -->
           <div v-if="submitted" class="success-msg">
             <i class="fas fa-check-circle"></i>
             Tin nhắn của bạn đã được gửi! Chúng tôi sẽ phản hồi trong vòng 24 giờ.
           </div>
 
-          <form v-else @submit.prevent="submitForm">
+          <!-- Lỗi -->
+          <div v-if="errorMsg" class="error-msg">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ errorMsg }}
+          </div>
+
+          <form v-if="!submitted" @submit.prevent="submitForm">
             <div class="form-grid">
               <div class="form-field">
                 <label>Họ và tên <span class="req">*</span></label>
@@ -97,14 +104,15 @@ import { ref } from 'vue'
 
 const submitted = ref(false)
 const sending   = ref(false)
+const errorMsg  = ref('')
 
 const form = ref({ name: '', email: '', phone: '', subject: '', message: '' })
 
 const contactInfo = [
-  { icon: 'fas fa-map-marker-alt', label: 'Địa chỉ',      value: '3/2 Ninh Kiều, Cần Thơ' },
-  { icon: 'fas fa-phone-alt',      label: 'Điện thoại',   value: '(028) 1234 5678' },
-  { icon: 'fas fa-envelope',       label: 'Email',         value: 'support@libratech.vn' },
-  { icon: 'fas fa-headset',        label: 'Hỗ trợ',       value: 'Thứ 2 – Thứ 7, 8:00 – 17:00' },
+  { icon: 'fas fa-map-marker-alt', label: 'Địa chỉ',    value: '3/2 Ninh Kiều, Cần Thơ' },
+  { icon: 'fas fa-phone-alt',      label: 'Điện thoại', value: '(028) 1234 5678' },
+  { icon: 'fas fa-envelope',       label: 'Email',       value: 'support@libratech.vn' },
+  { icon: 'fas fa-headset',        label: 'Hỗ trợ',     value: 'Thứ 2 – Thứ 7, 8:00 – 17:00' },
 ]
 
 const hours = [
@@ -114,10 +122,28 @@ const hours = [
 ]
 
 const submitForm = async () => {
-  sending.value = true
-  await new Promise(r => setTimeout(r, 1200))
-  sending.value = false
-  submitted.value = true
+  sending.value  = true
+  errorMsg.value = ''
+
+  try {
+    const res = await fetch('http://localhost:3000/api/contact', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(form.value),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) throw new Error(data.error || 'Gửi thất bại.')
+
+    submitted.value = true
+    form.value = { name: '', email: '', phone: '', subject: '', message: '' }
+
+  } catch (err) {
+    errorMsg.value = err.message || 'Không thể gửi tin nhắn, vui lòng thử lại.'
+  } finally {
+    sending.value = false
+  }
 }
 </script>
 
@@ -283,6 +309,7 @@ const submitForm = async () => {
 .btn-submit:hover:not(:disabled) { background: #5c2d1f; }
 .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* ── THÔNG BÁO ── */
 .success-msg {
   background: #f0f7f2;
   border: 1px solid #c8e6d0;
@@ -295,8 +322,24 @@ const submitForm = async () => {
   align-items: center;
   gap: 0.75rem;
   line-height: 1.6;
+  margin-bottom: 1.5rem;
 }
-.success-msg i { font-size: 1.2rem; flex-shrink: 0; }
+.error-msg {
+  background: #fef2f0;
+  border: 1px solid #f5c6be;
+  border-left: 4px solid #b94a2c;
+  border-radius: 6px;
+  padding: 1rem 1.5rem;
+  color: #b94a2c;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+.success-msg i,
+.error-msg i { font-size: 1.2rem; flex-shrink: 0; }
 
 /* ── MAP ── */
 .map-section {
@@ -306,10 +349,7 @@ const submitForm = async () => {
   align-items: center;
   justify-content: center;
 }
-.map-placeholder {
-  text-align: center;
-  color: #9a8a84;
-}
+.map-placeholder { text-align: center; color: #9a8a84; }
 .map-placeholder i { font-size: 2rem; color: #7c3d2d; display: block; margin-bottom: 0.5rem; }
 .map-placeholder p { font-size: 0.88rem; margin: 0; }
 
