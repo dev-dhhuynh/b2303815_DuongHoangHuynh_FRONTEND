@@ -76,6 +76,23 @@
                 </div>
               </div>
 
+              <!-- Nút gửi email nhắc nhở -->
+              <div v-if="overdueList.length > 0" class="bell-send-wrap">
+                <button
+                  class="bell-send-btn"
+                  :class="{ loading: sendingEmail }"
+                  :disabled="sendingEmail"
+                  @click.stop="sendOverdueEmails"
+                >
+                  <i :class="sendingEmail ? 'fas fa-spinner fa-spin' : 'fas fa-envelope'"></i>
+                  {{ sendingEmail ? 'Đang gửi...' : `Gửi nhắc nhở (${overdueList.length} người)` }}
+                </button>
+                <p v-if="sendResult" class="bell-send-result" :class="sendResult.type">
+                  <i :class="sendResult.type === 'success' ? 'fas fa-check-circle' : 'fas fa-times-circle'"></i>
+                  {{ sendResult.msg }}
+                </p>
+              </div>
+
               <div class="bell-dropdown-footer" @click="goToManage">
                 Xem lịch sử mượn →
               </div>
@@ -172,9 +189,11 @@ const confirmLogout = () => {
 }
 
 // ── Bell Admin ──
-const bellOpen    = ref(false)
-const bellRef     = ref(null)
-const overdueList = ref([])
+const bellOpen     = ref(false)
+const bellRef      = ref(null)
+const overdueList  = ref([])
+const sendingEmail = ref(false)
+const sendResult   = ref(null)
 
 const toggleBell = () => { bellOpen.value = !bellOpen.value }
 
@@ -194,22 +213,36 @@ const calcOverdueDays = (dateStr) => {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
+// Dùng endpoint /overdue riêng — nhẹ hơn, không tải toàn bộ lịch sử
 const loadOverdueAdmin = async () => {
   if (!adminStore.isLoggedIn) return
   try {
-    const res = await axios.get('http://localhost:3000/api/muon', {
-      headers: {
-        Authorization: `Bearer ${adminStore.token}`
-      }
+    const res = await axios.get('http://localhost:3000/api/muon/overdue', {
+      headers: { Authorization: `Bearer ${adminStore.token}` }
     })
-    const now = new Date()
-    overdueList.value = res.data.filter(item =>
-      item.status === 'approved' &&
-      item.NgayTraDuKien &&
-      new Date(item.NgayTraDuKien) < now
-    )
+    overdueList.value = res.data
   } catch (e) {
     console.error('Không tải được danh sách quá hạn:', e)
+  }
+}
+
+// Gửi email nhắc nhở thủ công
+const sendOverdueEmails = async () => {
+  sendingEmail.value = true
+  sendResult.value = null
+  try {
+    const res = await axios.post(
+      'http://localhost:3000/api/muon/send-overdue-emails',
+      {},
+      { headers: { Authorization: `Bearer ${adminStore.token}` } }
+    )
+    sendResult.value = { type: 'success', msg: res.data.message }
+  } catch (e) {
+    sendResult.value = { type: 'error', msg: 'Gửi thất bại, vui lòng thử lại.' }
+  } finally {
+    sendingEmail.value = false
+    // Tự ẩn kết quả sau 4 giây
+    setTimeout(() => { sendResult.value = null }, 4000)
   }
 }
 
@@ -380,7 +413,7 @@ onBeforeUnmount(() => {
 .bell-empty i { font-size: 2rem; color: #27ae60; margin-bottom: 0.5rem; display: block; }
 .bell-empty p { font-size: 0.85rem; margin: 0; font-family: 'DM Sans', sans-serif; }
 
-.bell-list { max-height: 300px; overflow-y: auto; }
+.bell-list { max-height: 260px; overflow-y: auto; }
 .bell-item {
   display: flex;
   align-items: flex-start;
@@ -429,6 +462,46 @@ onBeforeUnmount(() => {
   font-family: 'DM Sans', sans-serif;
 }
 .bell-item-overdue { color: #e74c3c; font-weight: 600; }
+
+/* ── Nút gửi email ── */
+.bell-send-wrap {
+  padding: 0.75rem 1rem 0.6rem;
+  border-top: 1px solid #e8e0d8;
+  background: #faf8f5;
+}
+.bell-send-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  background: #7c3d2d;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.55rem 1rem;
+  font-size: 0.82rem;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+  letter-spacing: 0.01em;
+}
+.bell-send-btn:hover:not(:disabled) { background: #5c2d1f; }
+.bell-send-btn:disabled,
+.bell-send-btn.loading { opacity: 0.7; cursor: not-allowed; }
+.bell-send-result {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  font-family: 'DM Sans', sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 4px;
+}
+.bell-send-result.success { color: #1e8a4a; background: #eafaf1; }
+.bell-send-result.error   { color: #c0392b; background: #fdedec; }
 
 .bell-dropdown-footer {
   padding: 0.75rem 1rem;
