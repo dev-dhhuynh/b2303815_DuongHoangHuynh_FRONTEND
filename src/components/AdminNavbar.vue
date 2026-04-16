@@ -22,6 +22,11 @@
         <router-link to="/admin/manage-sach" class="admin-nav-link">
           <i class="fas fa-book"></i> Quản Lý Sách
         </router-link>
+
+        <router-link to="/admin/docgia" class="admin-nav-link">
+          <i class="fas fa-users"></i> Độc Giả
+        </router-link>
+
         <router-link to="/admin/borrow-all" class="admin-nav-link">
           <i class="fas fa-list"></i> Lịch Sử Mượn
         </router-link>
@@ -104,7 +109,7 @@
         <div class="admin-dropdown">
           <button class="admin-btn-account">
             <i class="fas fa-user-cog"></i>
-            <span>{{ adminStore.isLoggedIn ? (adminStore.admin?.HoTenNV || 'Admin') : 'Admin' }}</span>
+            <span>{{ adminStore.isLoggedIn ? 'ADMIN' : 'Admin' }}</span>
             <i class="fas fa-caret-down caret"></i>
           </button>
 
@@ -213,7 +218,6 @@ const calcOverdueDays = (dateStr) => {
   return Math.floor(diff / (1000 * 60 * 60 * 24))
 }
 
-// Dùng endpoint /overdue riêng — nhẹ hơn, không tải toàn bộ lịch sử
 const loadOverdueAdmin = async () => {
   if (!adminStore.isLoggedIn) return
   try {
@@ -226,7 +230,6 @@ const loadOverdueAdmin = async () => {
   }
 }
 
-// Gửi email nhắc nhở thủ công
 const sendOverdueEmails = async () => {
   sendingEmail.value = true
   sendResult.value = null
@@ -241,7 +244,6 @@ const sendOverdueEmails = async () => {
     sendResult.value = { type: 'error', msg: 'Gửi thất bại, vui lòng thử lại.' }
   } finally {
     sendingEmail.value = false
-    // Tự ẩn kết quả sau 4 giây
     setTimeout(() => { sendResult.value = null }, 4000)
   }
 }
@@ -539,6 +541,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   letter-spacing: 0.03em;
   transition: background 0.2s;
+  white-space: nowrap;
 }
 .admin-btn-account:hover { background: #7c3d2d; }
 .admin-btn-account .caret { font-size: 0.7rem; opacity: 0.75; }

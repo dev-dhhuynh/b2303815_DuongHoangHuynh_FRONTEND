@@ -18,6 +18,7 @@ import AdminApproved from "../views/admin/AdminApproved.vue";
 import AdminManageSach from "../views/admin/AdminManageSach.vue";
 import AdminBorrowAll from "../views/admin/AdminBorrowAll.vue";
 import AdminManageNXB from "../views/admin/AdminManageNXB.vue"; // 👈 THÊM
+import AdminDocGia from "../views/admin/AdminDocGia.vue";
 
 const routes = [
   { path: "/",             component: Home },
@@ -38,7 +39,8 @@ const routes = [
   { path: "/admin/approved",     component: AdminApproved },
   { path: "/admin/manage-sach",  component: AdminManageSach },
   { path: "/admin/borrow-all",   component: AdminBorrowAll },
-  { path: "/admin/manage-nxb",   component: AdminManageNXB }, // 👈 THÊM
+  { path: "/admin/manage-nxb",   component: AdminManageNXB },
+  { path: "/admin/docgia", component: AdminDocGia },
 ];
 
 const router = createRouter({
