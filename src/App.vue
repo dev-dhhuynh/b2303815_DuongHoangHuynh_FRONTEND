@@ -56,15 +56,65 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--color-bg);
   color: var(--color-text);
-  margin: 0;
-  padding: 0;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 .main-content {
-  min-height: calc(100vh - 56px);
+  flex: 1;
+  width: 100%;
+}
+
+/* ── Chuẩn hóa kích thước cho TẤT CẢ trang admin ── */
+/* Áp dụng cho page-container, page-wrap, và cả Bootstrap container bên trong pending-page */
+.page-container,
+.page-wrap,
+.pending-page > .container,
+.pending-page > .page-container {
+  max-width: 1280px !important;
+  width: 100% !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding: 2rem !important;
+  box-sizing: border-box !important;
+}
+
+/* Reset Bootstrap py-5 trên AdminPending */
+.pending-page > .container.py-5,
+.pending-page > .page-container.py-5 {
+  padding-top: 2rem !important;
+  padding-bottom: 2rem !important;
+}
+
+@media (max-width: 1024px) {
+  .page-container,
+  .page-wrap,
+  .pending-page > .container,
+  .pending-page > .page-container {
+    padding: 1.5rem !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-container,
+  .page-wrap,
+  .pending-page > .container,
+  .pending-page > .page-container {
+    padding: 1rem !important;
+  }
 }
 </style>

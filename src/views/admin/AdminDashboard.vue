@@ -398,12 +398,13 @@ onMounted(() => {
   font-family: 'DM Sans', sans-serif;
   background: #f7f7f5;
   min-height: 100vh;
-  padding: 2.5rem 0 5rem;
+  /* padding: 2.5rem 0 5rem; */
+  padding: 2rem 0;
 }
 .page-container {
-  max-width: 1200px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 0 2rem;
+  padding: 2rem;
 }
 
 /* ── HEADER ── */

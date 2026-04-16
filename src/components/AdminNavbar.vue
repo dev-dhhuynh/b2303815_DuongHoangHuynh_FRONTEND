@@ -13,22 +13,38 @@
         <router-link to="/admin/dashboard" class="admin-nav-link">
           <i class="fas fa-tachometer-alt"></i> Dashboard
         </router-link>
-        <router-link to="/admin/pending" class="admin-nav-link">
-          <i class="fas fa-clock"></i> Chờ Duyệt
-        </router-link>
-        <router-link to="/admin/approved" class="admin-nav-link">
-          <i class="fas fa-check-circle"></i> Đã Duyệt
-        </router-link>
+
+        <!-- Dropdown: Mượn Sách -->
+        <div class="nav-dropdown-wrap" ref="muonDropRef">
+          <button
+            class="admin-nav-link nav-dropdown-btn"
+            :class="{ 'router-link-active': isMuonActive }"
+            @click="toggleMuonDrop"
+          >
+            <i class="fas fa-book-reader"></i> Mượn Sách
+            <i class="fas fa-caret-down caret-small"></i>
+          </button>
+          <div v-if="muonDropOpen" class="nav-sub-menu">
+            <router-link to="/admin/pending" class="nav-sub-item" @click="muonDropOpen = false">
+              <i class="fas fa-clock"></i> Chờ Duyệt
+            </router-link>
+            <router-link to="/admin/approved" class="nav-sub-item" @click="muonDropOpen = false">
+              <i class="fas fa-check-circle"></i> Đã Duyệt
+            </router-link>
+            <router-link to="/admin/borrow-all" class="nav-sub-item" @click="muonDropOpen = false">
+              <i class="fas fa-list"></i> Lịch Sử Mượn
+            </router-link>
+          </div>
+        </div>
+
         <router-link to="/admin/manage-sach" class="admin-nav-link">
           <i class="fas fa-book"></i> Quản Lý Sách
         </router-link>
-
         <router-link to="/admin/docgia" class="admin-nav-link">
           <i class="fas fa-users"></i> Độc Giả
         </router-link>
-
-        <router-link to="/admin/borrow-all" class="admin-nav-link">
-          <i class="fas fa-list"></i> Lịch Sử Mượn
+        <router-link to="/admin/nhanvien" class="admin-nav-link">
+          <i class="fas fa-users-cog"></i> Nhân Viên
         </router-link>
       </div>
 
@@ -51,13 +67,11 @@
                 </span>
               </div>
 
-              <!-- Không có quá hạn -->
               <div v-if="overdueList.length === 0" class="bell-empty">
                 <i class="fas fa-check-circle"></i>
                 <p>Không có thông báo!</p>
               </div>
 
-              <!-- Danh sách quá hạn -->
               <div v-else class="bell-list">
                 <div
                   v-for="item in overdueList"
@@ -81,7 +95,6 @@
                 </div>
               </div>
 
-              <!-- Nút gửi email nhắc nhở -->
               <div v-if="overdueList.length > 0" class="bell-send-wrap">
                 <button
                   class="bell-send-btn"
@@ -109,7 +122,7 @@
         <div class="admin-dropdown">
           <button class="admin-btn-account">
             <i class="fas fa-user-cog"></i>
-            <span>{{ adminStore.isLoggedIn ? 'ADMIN' : 'Admin' }}</span>
+            <span>{{ adminStore.isLoggedIn ? 'Admin' : 'Admin' }}</span>
             <i class="fas fa-caret-down caret"></i>
           </button>
 
@@ -176,22 +189,31 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAdminStore } from '../stores/adminStore'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 
 const adminStore = useAdminStore()
 const router = useRouter()
+const route  = useRoute()
 
 const showLogoutModal = ref(false)
 const showLogoutConfirm = () => { showLogoutModal.value = true }
-const closeLogoutModal = () => { showLogoutModal.value = false }
+const closeLogoutModal  = () => { showLogoutModal.value = false }
 const confirmLogout = () => {
   adminStore.logout()
   closeLogoutModal()
   router.push('/admin/login')
 }
+
+// ── Dropdown Mượn Sách ──
+const muonDropOpen = ref(false)
+const muonDropRef  = ref(null)
+const toggleMuonDrop = () => { muonDropOpen.value = !muonDropOpen.value }
+const isMuonActive = computed(() =>
+  ['/admin/pending', '/admin/approved', '/admin/borrow-all'].includes(route.path)
+)
 
 // ── Bell Admin ──
 const bellOpen     = ref(false)
@@ -252,6 +274,9 @@ const handleClickOutside = (e) => {
   if (bellRef.value && !bellRef.value.contains(e.target)) {
     bellOpen.value = false
   }
+  if (muonDropRef.value && !muonDropRef.value.contains(e.target)) {
+    muonDropOpen.value = false
+  }
 }
 
 watch(() => adminStore.isLoggedIn, (val) => {
@@ -274,248 +299,168 @@ onBeforeUnmount(() => {
 
 /* ── NAVBAR ── */
 .admin-navbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  position: sticky; top: 0; z-index: 100;
   background: #1a120e;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .admin-nav-inner {
-  max-width: 1280px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 2rem;
-  gap: 1.5rem;
+  max-width: 1280px; margin: 0 auto;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.85rem 2rem; gap: 1rem;
 }
 
 /* Logo */
 .admin-logo {
   font-family: 'Playfair Display', serif;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #e8b89a;
-  text-decoration: none;
+  font-size: 1.25rem; font-weight: 700;
+  color: #e8b89a; text-decoration: none;
   letter-spacing: 0.04em;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  display: flex; align-items: center; gap: 0.5rem;
   flex-shrink: 0;
 }
 .admin-logo-icon { color: #7c3d2d; font-size: 1rem; }
 
 /* Nav links */
 .admin-nav-links {
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-  flex: 1;
-  justify-content: center;
+  display: flex; align-items: center; gap: 0.1rem;
+  flex: 1; justify-content: center;
 }
 .admin-nav-link {
   font-family: 'DM Sans', sans-serif;
-  font-size: 0.8rem;
-  font-weight: 400;
+  font-size: 0.78rem; font-weight: 400;
   color: rgba(255,255,255,0.55);
   text-decoration: none;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 0.4rem 0.7rem;
-  border-radius: 4px;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  padding: 0.4rem 0.65rem; border-radius: 4px;
   transition: color 0.2s, background 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  display: flex; align-items: center; gap: 0.3rem;
   white-space: nowrap;
 }
-.admin-nav-link i { font-size: 0.72rem; opacity: 0.7; }
+.admin-nav-link i { font-size: 0.7rem; opacity: 0.7; }
 .admin-nav-link:hover { color: #fff; background: rgba(255,255,255,0.08); }
 .admin-nav-link.router-link-active { color: #e8b89a; background: rgba(232,184,154,0.1); }
 
+/* ── Nav Dropdown (Mượn Sách) ── */
+.nav-dropdown-wrap { position: relative; }
+.nav-dropdown-btn {
+  background: none; border: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+}
+.caret-small { font-size: 0.65rem; opacity: 0.7; margin-left: 1px; }
+
+.nav-sub-menu {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  background: #2a1e18;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  min-width: 170px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  padding: 0.4rem;
+  z-index: 200;
+}
+.nav-sub-item {
+  display: flex; align-items: center; gap: 0.55rem;
+  padding: 0.55rem 0.75rem; border-radius: 5px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.82rem; color: rgba(255,255,255,0.65);
+  text-decoration: none; text-transform: uppercase;
+  letter-spacing: 0.04em;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.nav-sub-item i { font-size: 0.72rem; opacity: 0.7; }
+.nav-sub-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.nav-sub-item.router-link-active { color: #e8b89a; background: rgba(232,184,154,0.1); }
+
 /* Actions */
 .admin-nav-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-shrink: 0;
+  display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;
 }
 
-/* ── BELL ADMIN ── */
+/* ── BELL ── */
 .bell-wrap { position: relative; }
 .admin-icon-btn {
-  background: none;
-  border: none;
+  background: none; border: none;
   color: rgba(255,255,255,0.6);
-  font-size: 1rem;
-  cursor: pointer;
-  padding: 0.45rem 0.5rem;
-  border-radius: 4px;
-  transition: color 0.2s, background 0.2s;
-  position: relative;
+  font-size: 1rem; cursor: pointer;
+  padding: 0.45rem 0.5rem; border-radius: 4px;
+  transition: color 0.2s, background 0.2s; position: relative;
 }
 .admin-icon-btn:hover { color: #fff; background: rgba(255,255,255,0.08); }
 .bell-badge {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  background: #e74c3c;
-  color: #fff;
-  font-size: 0.6rem;
-  font-weight: 700;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: absolute; top: 2px; right: 2px;
+  background: #e74c3c; color: #fff;
+  font-size: 0.6rem; font-weight: 700;
+  width: 16px; height: 16px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
   font-family: 'DM Sans', sans-serif;
 }
 
 .bell-dropdown {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 340px;
-  background: #fff;
-  border: 1px solid #e8e0d8;
-  border-radius: 12px;
+  position: absolute; top: calc(100% + 10px); right: 0;
+  width: 340px; background: #fff;
+  border: 1px solid #e8e0d8; border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.25);
-  z-index: 300;
-  overflow: hidden;
+  z-index: 300; overflow: hidden;
 }
 .bell-dropdown-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid #e8e0d8;
-  background: #faf8f5;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.85rem 1rem; border-bottom: 1px solid #e8e0d8; background: #faf8f5;
 }
-.bell-dropdown-title {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #2c2420;
-  font-family: 'DM Sans', sans-serif;
-}
+.bell-dropdown-title { font-size: 0.88rem; font-weight: 600; color: #2c2420; font-family: 'DM Sans', sans-serif; }
 .bell-dropdown-count {
-  font-size: 0.75rem;
-  background: #fdedec;
-  color: #e74c3c;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem; background: #fdedec; color: #e74c3c;
+  padding: 2px 8px; border-radius: 10px; font-weight: 600; font-family: 'DM Sans', sans-serif;
 }
-.bell-empty {
-  padding: 2rem 1rem;
-  text-align: center;
-  color: #9a8a84;
-}
+.bell-empty { padding: 2rem 1rem; text-align: center; color: #9a8a84; }
 .bell-empty i { font-size: 2rem; color: #27ae60; margin-bottom: 0.5rem; display: block; }
 .bell-empty p { font-size: 0.85rem; margin: 0; font-family: 'DM Sans', sans-serif; }
 
 .bell-list { max-height: 260px; overflow-y: auto; }
 .bell-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
-  border-bottom: 1px solid #f5f1ec;
-  cursor: pointer;
-  transition: background 0.15s;
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  padding: 0.85rem 1rem; border-bottom: 1px solid #f5f1ec;
+  cursor: pointer; transition: background 0.15s;
 }
 .bell-item:hover { background: #fff8f6; }
 .bell-item:last-child { border-bottom: none; }
 .bell-item-icon {
-  width: 32px;
-  height: 32px;
-  background: #fdedec;
-  color: #e74c3c;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.8rem;
-  flex-shrink: 0;
-  margin-top: 2px;
+  width: 32px; height: 32px; background: #fdedec; color: #e74c3c;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; flex-shrink: 0; margin-top: 2px;
 }
 .bell-item-info { flex: 1; min-width: 0; }
 .bell-item-title {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #2c2420;
-  margin: 0 0 0.15rem;
-  font-family: 'DM Sans', sans-serif;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-size: 0.85rem; font-weight: 600; color: #2c2420; margin: 0 0 0.15rem;
+  font-family: 'DM Sans', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.bell-item-reader {
-  font-size: 0.78rem;
-  color: #6b5c55;
-  margin: 0 0 0.15rem;
-  font-family: 'DM Sans', sans-serif;
-}
-.bell-item-date {
-  font-size: 0.75rem;
-  color: #9a8a84;
-  margin: 0;
-  font-family: 'DM Sans', sans-serif;
-}
+.bell-item-reader { font-size: 0.78rem; color: #6b5c55; margin: 0 0 0.15rem; font-family: 'DM Sans', sans-serif; }
+.bell-item-date   { font-size: 0.75rem; color: #9a8a84; margin: 0; font-family: 'DM Sans', sans-serif; }
 .bell-item-overdue { color: #e74c3c; font-weight: 600; }
 
-/* ── Nút gửi email ── */
-.bell-send-wrap {
-  padding: 0.75rem 1rem 0.6rem;
-  border-top: 1px solid #e8e0d8;
-  background: #faf8f5;
-}
+.bell-send-wrap { padding: 0.75rem 1rem 0.6rem; border-top: 1px solid #e8e0d8; background: #faf8f5; }
 .bell-send-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  background: #7c3d2d;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 0.55rem 1rem;
-  font-size: 0.82rem;
-  font-family: 'DM Sans', sans-serif;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s, opacity 0.2s;
-  letter-spacing: 0.01em;
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+  background: #7c3d2d; color: #fff; border: none; border-radius: 6px;
+  padding: 0.55rem 1rem; font-size: 0.82rem; font-family: 'DM Sans', sans-serif;
+  font-weight: 500; cursor: pointer; transition: background 0.2s, opacity 0.2s;
 }
 .bell-send-btn:hover:not(:disabled) { background: #5c2d1f; }
 .bell-send-btn:disabled,
 .bell-send-btn.loading { opacity: 0.7; cursor: not-allowed; }
 .bell-send-result {
-  margin: 0.5rem 0 0;
-  font-size: 0.78rem;
-  font-family: 'DM Sans', sans-serif;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: 4px;
+  margin: 0.5rem 0 0; font-size: 0.78rem; font-family: 'DM Sans', sans-serif;
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.35rem 0.6rem; border-radius: 4px;
 }
 .bell-send-result.success { color: #1e8a4a; background: #eafaf1; }
 .bell-send-result.error   { color: #c0392b; background: #fdedec; }
 
 .bell-dropdown-footer {
-  padding: 0.75rem 1rem;
-  text-align: center;
-  font-size: 0.82rem;
-  color: #7c3d2d;
-  font-weight: 500;
-  cursor: pointer;
-  border-top: 1px solid #e8e0d8;
-  background: #faf8f5;
-  font-family: 'DM Sans', sans-serif;
-  transition: background 0.15s;
+  padding: 0.75rem 1rem; text-align: center;
+  font-size: 0.82rem; color: #7c3d2d; font-weight: 500;
+  cursor: pointer; border-top: 1px solid #e8e0d8; background: #faf8f5;
+  font-family: 'DM Sans', sans-serif; transition: background 0.15s;
 }
 .bell-dropdown-footer:hover { background: #f0ebe4; }
 
@@ -524,74 +469,42 @@ onBeforeUnmount(() => {
 .dropdown-fade-enter-from,
 .dropdown-fade-leave-to { opacity: 0; transform: translateY(-6px); }
 
-/* Dropdown account */
+/* ── Account Dropdown ── */
 .admin-dropdown { position: relative; }
 .admin-btn-account {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  background: rgba(124, 61, 45, 0.85);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  padding: 0.45rem 1rem;
-  font-size: 0.83rem;
-  font-weight: 500;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  letter-spacing: 0.03em;
-  transition: background 0.2s;
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 0.45rem;
+  background: rgba(124, 61, 45, 0.85); color: #fff;
+  border: none; border-radius: 4px; padding: 0.45rem 1rem;
+  font-size: 0.83rem; font-weight: 500; font-family: 'DM Sans', sans-serif;
+  cursor: pointer; letter-spacing: 0.03em; transition: background 0.2s; white-space: nowrap;
 }
 .admin-btn-account:hover { background: #7c3d2d; }
 .admin-btn-account .caret { font-size: 0.7rem; opacity: 0.75; }
 
 .admin-dropdown-menu {
-  display: none;
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: #fff;
-  border: 1px solid #e8e0d8;
-  border-radius: 8px;
-  min-width: 200px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-  padding: 0.5rem;
-  z-index: 200;
+  display: none; position: absolute; top: calc(100% + 8px); right: 0;
+  background: #fff; border: 1px solid #e8e0d8; border-radius: 8px;
+  min-width: 200px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  padding: 0.5rem; z-index: 200;
 }
 .admin-dropdown:hover .admin-dropdown-menu,
 .admin-dropdown:focus-within .admin-dropdown-menu { display: block; }
 
 .dropdown-section-label {
-  font-size: 0.72rem;
-  color: #b0a09a;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 0.4rem 0.75rem 0.1rem;
-  margin: 0;
-  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem; color: #b0a09a; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 0.4rem 0.75rem 0.1rem; margin: 0; font-family: 'DM Sans', sans-serif;
 }
 .dropdown-info { padding: 0 0.25rem; }
 .dropdown-admin-name { font-size: 0.9rem; font-weight: 500; color: #2c2420; padding: 0.1rem 0.75rem 0; margin: 0; font-family: 'DM Sans', sans-serif; }
-.dropdown-admin-id { font-size: 0.78rem; color: #9a8a84; padding: 0.1rem 0.75rem 0.4rem; margin: 0; font-family: 'DM Sans', sans-serif; }
+.dropdown-admin-id   { font-size: 0.78rem; color: #9a8a84; padding: 0.1rem 0.75rem 0.4rem; margin: 0; font-family: 'DM Sans', sans-serif; }
 .dropdown-divider { height: 1px; background: #ede8e3; margin: 0.3rem 0.5rem; }
 
 .admin-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  width: 100%;
-  padding: 0.55rem 0.75rem;
-  font-size: 0.87rem;
-  color: #4a3530;
-  text-decoration: none;
-  border-radius: 5px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-family: 'DM Sans', sans-serif;
-  transition: background 0.15s, color 0.15s;
-  text-align: left;
+  display: flex; align-items: center; gap: 0.6rem;
+  width: 100%; padding: 0.55rem 0.75rem;
+  font-size: 0.87rem; color: #4a3530; text-decoration: none;
+  border-radius: 5px; border: none; background: none; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: background 0.15s, color 0.15s; text-align: left;
 }
 .admin-dropdown-item i { font-size: 0.78rem; color: #9a8a84; width: 14px; }
 .admin-dropdown-item:hover { background: #f5f1ec; color: #2c2420; }
@@ -600,7 +513,7 @@ onBeforeUnmount(() => {
 .admin-dropdown-item--danger i { color: #b94a2c; }
 
 /* ── MODAL ── */
-.modal-overlay { position: fixed; inset: 0; background: rgba(26, 18, 14, 0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(26,18,14,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1.5rem; }
 .modal-box { background: #faf8f5; border-radius: 8px; width: 100%; max-width: 440px; border: 1px solid #e8e0d8; }
 .modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.5rem 1.75rem 1.1rem; border-bottom: 1px solid #e8e0d8; }
 .modal-tag { font-size: 0.7rem; letter-spacing: 0.18em; color: #7c3d2d; font-weight: 500; margin: 0 0 0.25rem; font-family: 'DM Sans', sans-serif; }
@@ -618,11 +531,11 @@ onBeforeUnmount(() => {
 /* ── RESPONSIVE ── */
 @media (max-width: 1024px) {
   .admin-nav-links { gap: 0; }
-  .admin-nav-link { font-size: 0.75rem; padding: 0.4rem 0.5rem; }
+  .admin-nav-link  { font-size: 0.73rem; padding: 0.4rem 0.45rem; }
 }
 @media (max-width: 768px) {
   .admin-nav-links { display: none; }
   .admin-nav-inner { padding: 0.85rem 1rem; }
-  .bell-dropdown { width: 280px; right: -60px; }
+  .bell-dropdown   { width: 280px; right: -60px; }
 }
 </style>

@@ -19,6 +19,8 @@ import AdminManageSach from "../views/admin/AdminManageSach.vue";
 import AdminBorrowAll from "../views/admin/AdminBorrowAll.vue";
 import AdminManageNXB from "../views/admin/AdminManageNXB.vue"; // 👈 THÊM
 import AdminDocGia from "../views/admin/AdminDocGia.vue";
+import AdminNhanVien from "../views/admin/AdminNhanVien.vue";
+
 
 const routes = [
   { path: "/",             component: Home },
@@ -40,6 +42,7 @@ const routes = [
   { path: "/admin/manage-sach",  component: AdminManageSach },
   { path: "/admin/borrow-all",   component: AdminBorrowAll },
   { path: "/admin/manage-nxb",   component: AdminManageNXB },
+  { path: "/admin/nhanvien",   component: AdminNhanVien },
   { path: "/admin/docgia", component: AdminDocGia },
 ];
 

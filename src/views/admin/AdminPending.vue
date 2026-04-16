@@ -1,9 +1,9 @@
 <template>
   <div class="pending-page">
-    <div class="container py-5">
+    <div class="page-container">
 
       <!-- Page Header -->
-      <div class="page-header mb-5">
+      <div class="page-header">
         <div class="d-flex align-items-center gap-3 mb-2">
           <div class="header-icon">
             <i class="fas fa-hourglass-half"></i>
@@ -354,6 +354,8 @@ onMounted(() => {
   background: var(--bg);
   min-height: 100vh;
 }
+
+.page-container { max-width: 1280px; margin: 0 auto; padding: 2rem; }
 
 /* ── Page Header ────────────────────────────────────── */
 .page-header { border-bottom: 2px solid var(--border); padding-bottom: 1.5rem; }
